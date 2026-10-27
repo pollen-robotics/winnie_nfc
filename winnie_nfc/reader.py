@@ -93,7 +93,7 @@ def write_message(chip, payload, info=None):
     # 2. the payload, skipping the header page
     for offset in range(4, len(padded), 4):
         page = type2.PAGE_USER_START + offset // 4
-        type2.write_page(chip, page, padded[offset:offset + 4])
+        type2.write_page(chip, page, padded[offset : offset + 4])
 
     # 3. the real header last: it is what makes the message readable
     type2.write_page(chip, type2.PAGE_USER_START, padded[:4])
@@ -216,8 +216,7 @@ class NTagReader:
             # caller to decide whether this tag is blank or carries a code.
             return TagRead(uid, info, None, data, None)
         except ndef.NdefError as exc:
-            return TagRead(uid, info, None, data,
-                           f"unreadable content: {exc}")
+            return TagRead(uid, info, None, data, f"unreadable content: {exc}")
 
     def dump(self):
         """The tag's whole user memory, within its own bounds."""

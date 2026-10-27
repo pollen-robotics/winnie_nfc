@@ -26,7 +26,8 @@ import argparse
 import sys
 import time
 
-from winnie_nfc import ndef, registers as R, type2
+from winnie_nfc import ndef, type2
+from winnie_nfc import registers as R
 from winnie_nfc.core import CLRC663, TagError, UnexpectedVersionError
 from winnie_nfc.iso14443a import select, wupa
 from winnie_nfc.transport import Transport, TransportError
@@ -115,9 +116,7 @@ def summarise(records, error):
         return error
     if not records:
         return "blank tag, no record"
-    return "  |  ".join(
-        f"{r['type']}: {ndef.format_record(r)}" for r in records
-    )
+    return "  |  ".join(f"{r['type']}: {ndef.format_record(r)}" for r in records)
 
 
 def read_loop(chip, rate=5.0, raw=False, out=print):
@@ -164,8 +163,7 @@ def read_loop(chip, rate=5.0, raw=False, out=print):
         over = elapsed > period * 1000
         if over:
             overruns += 1
-        out(f"[{timestamp()}] {body}   "
-            f"({elapsed:5.1f} ms{'  !' if over else ''})")
+        out(f"[{timestamp()}] {body}   ({elapsed:5.1f} ms{'  !' if over else ''})")
 
         left = period - (time.monotonic() - started)
         if left > 0:
@@ -189,19 +187,19 @@ def run(args):
         version = chip.version()
         if version != R.VERSION_CLRC663:
             raise UnexpectedVersionError(
-                f"the chip reports 0x{version:02X}, "
-                f"expected 0x{R.VERSION_CLRC663:02X}"
+                f"the chip reports 0x{version:02X}, expected 0x{R.VERSION_CLRC663:02X}"
             )
     except (TransportError, TagError) as exc:
         print(f"the chip does not answer: {exc}", file=sys.stderr)
-        print("-> unplug and replug the board, then run this again",
-              file=sys.stderr)
+        print("-> unplug and replug the board, then run this again", file=sys.stderr)
         transport.close()
         return 1
 
     print(f"CLRC663 version 0x{version:02X} on {args.port}")
-    print(f"continuous read at {args.rate} Hz "
-          f"(period {1000 / args.rate:.0f} ms) — Ctrl+C to stop")
+    print(
+        f"continuous read at {args.rate} Hz "
+        f"(period {1000 / args.rate:.0f} ms) — Ctrl+C to stop"
+    )
     print("a trailing `!` marks a cycle longer than the period\n")
 
     try:
@@ -221,17 +219,23 @@ def main():
     parser = argparse.ArgumentParser(
         description="Print the tag reading continuously, one line per poll."
     )
-    parser.add_argument("--port", default="/dev/ttyACM0",
-                        help="serial port (default /dev/ttyACM0)")
-    parser.add_argument("--rate", type=float, default=5.0,
-                        help="polls per second (default 5)")
-    parser.add_argument("--raw", action="store_true",
-                        help="also print the first bytes in hex")
+    parser.add_argument(
+        "--port", default="/dev/ttyACM0", help="serial port (default /dev/ttyACM0)"
+    )
+    parser.add_argument(
+        "--rate", type=float, default=5.0, help="polls per second (default 5)"
+    )
+    parser.add_argument(
+        "--raw", action="store_true", help="also print the first bytes in hex"
+    )
     args = parser.parse_args()
 
     if args.rate <= 0 or args.rate > 20:
-        print("the rate must sit between 0 and 20 Hz: a detection costs "
-              "~35 ms on its own", file=sys.stderr)
+        print(
+            "the rate must sit between 0 and 20 Hz: a detection costs "
+            "~35 ms on its own",
+            file=sys.stderr,
+        )
         return 1
     return run(args)
 

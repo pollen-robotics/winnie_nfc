@@ -125,10 +125,8 @@ MODELS = {
     (0x04, 0x0F): Model("NTAG213", last_page=39, ndef_bytes=144),
     (0x04, 0x11): Model("NTAG215", last_page=129, ndef_bytes=496),
     (0x04, 0x13): Model("NTAG216", last_page=225, ndef_bytes=872),
-    (0x03, 0x0B): Model("MIFARE Ultralight EV1 48B", last_page=15,
-                        ndef_bytes=48),
-    (0x03, 0x0E): Model("MIFARE Ultralight EV1 128B", last_page=35,
-                        ndef_bytes=128),
+    (0x03, 0x0B): Model("MIFARE Ultralight EV1 48B", last_page=15, ndef_bytes=48),
+    (0x03, 0x0E): Model("MIFARE Ultralight EV1 128B", last_page=35, ndef_bytes=128),
 }
 
 # Capacity of the largest known model. Used to refuse a message beyond the
@@ -194,8 +192,7 @@ class TagInfo:
         return (self.last_page - PAGE_USER_START + 1) * 4
 
     def __repr__(self):
-        return (f"<TagInfo {self.name} ndef={self.ndef_bytes} "
-                f"pages 4..{self.last_page}>")
+        return f"<TagInfo {self.name} ndef={self.ndef_bytes} pages 4..{self.last_page}>"
 
 
 def select_tag(chip, attempts=SELECT_ATTEMPTS):
@@ -337,9 +334,7 @@ def get_version(chip):
     """
     response = chip.transceive([CMD_GET_VERSION], timeout_ms=10)
     if len(response) != 8:
-        raise Type2Error(
-            f"GET_VERSION returned {len(response)} bytes, expected 8"
-        )
+        raise Type2Error(f"GET_VERSION returned {len(response)} bytes, expected 8")
     return response
 
 
@@ -367,8 +362,9 @@ def _read_timeout(nbytes):
 def fast_read(chip, start, end):
     """FAST_READ returns (end - start + 1) * 4 bytes in one transaction."""
     expected = (end - start + 1) * 4
-    response = chip.transceive([CMD_FAST_READ, start, end],
-                               timeout_ms=_read_timeout(expected))
+    response = chip.transceive(
+        [CMD_FAST_READ, start, end], timeout_ms=_read_timeout(expected)
+    )
     if len(response) != expected:
         raise Type2Error(
             f"FAST_READ {start}-{end} returned {len(response)} bytes, "
@@ -391,9 +387,7 @@ def read_user_memory(chip, info=None):
     if info is None:
         info = identify(chip)
     if info.last_page is None:
-        raise UnknownModelError(
-            "unidentified tag: memory bounds unknown, cannot read"
-        )
+        raise UnknownModelError("unidentified tag: memory bounds unknown, cannot read")
 
     if info.fast_read:
         data = bytearray()

@@ -18,7 +18,8 @@ import argparse
 import sys
 import time
 
-from winnie_nfc import ndef, registers as R, type2
+from winnie_nfc import ndef, type2
+from winnie_nfc import registers as R
 from winnie_nfc.core import CLRC663, TagError, UnexpectedVersionError
 from winnie_nfc.iso14443a import select, wupa
 from winnie_nfc.ndef import NdefError, format_record
@@ -86,9 +87,7 @@ def write_and_verify(chip, payload, description):
     # Raw value: format_record escapes control characters.
     read_back = format_record(records[0])
     if records[0].get("value") != description:
-        raise TagError(
-            f'read back: "{read_back}" instead of "{description}"'
-        )
+        raise TagError(f'read back: "{read_back}" instead of "{description}"')
     return read_back
 
 
@@ -98,8 +97,7 @@ def programme_one_tag(chip, payload, description, number=None):
 
     uid = wait_for_tag(chip, present=True)
     if uid is None:
-        print(f"[{timestamp()}] no tag presented within "
-              f"{TAG_WAIT:.0f} s, giving up")
+        print(f"[{timestamp()}] no tag presented within {TAG_WAIT:.0f} s, giving up")
         return False
 
     print(f"[{timestamp()}] {prefix}: UID {uid.hex(' ')}", end="", flush=True)
@@ -125,9 +123,11 @@ def run(args):
         # Bound of the largest supported model: this refusal needs no tag on
         # the antenna. The capacity of the tag actually presented is checked
         # afterwards, by check_capacity.
-        print(f"message too long: {len(payload)} bytes to write, "
-              f"{type2.MAX_CAPACITY} at most on the largest supported tag",
-              file=sys.stderr)
+        print(
+            f"message too long: {len(payload)} bytes to write, "
+            f"{type2.MAX_CAPACITY} at most on the largest supported tag",
+            file=sys.stderr,
+        )
         return 1
 
     transport = Transport(port=args.port)
@@ -144,8 +144,7 @@ def run(args):
         version = chip.version()
         if version != R.VERSION_CLRC663:
             raise UnexpectedVersionError(
-                f"the chip reports 0x{version:02X}, "
-                f"expected 0x{R.VERSION_CLRC663:02X}"
+                f"the chip reports 0x{version:02X}, expected 0x{R.VERSION_CLRC663:02X}"
             )
     except (TransportError, TagError) as exc:
         print(f"the chip does not answer: {exc}", file=sys.stderr)
@@ -153,8 +152,10 @@ def run(args):
         return 1
 
     print(f"CLRC663 version 0x{version:02X} on {args.port}")
-    print(f"to write: {description}  ({len(payload)} bytes, capacity checked "
-          f"on every tag)\n")
+    print(
+        f"to write: {description}  ({len(payload)} bytes, capacity checked "
+        f"on every tag)\n"
+    )
 
     written = failed = 0
     try:
@@ -194,12 +195,17 @@ def main():
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--text", help="text to write")
     group.add_argument("--url", help="URL to write")
-    parser.add_argument("--lang", default="en",
-                        help="language code of the text record (default en)")
-    parser.add_argument("--port", default="/dev/ttyACM0",
-                        help="serial port (default /dev/ttyACM0)")
-    parser.add_argument("--batch", action="store_true",
-                        help="programme a run of tags, one after another")
+    parser.add_argument(
+        "--lang", default="en", help="language code of the text record (default en)"
+    )
+    parser.add_argument(
+        "--port", default="/dev/ttyACM0", help="serial port (default /dev/ttyACM0)"
+    )
+    parser.add_argument(
+        "--batch",
+        action="store_true",
+        help="programme a run of tags, one after another",
+    )
     return run(parser.parse_args())
 
 

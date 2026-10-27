@@ -4,6 +4,7 @@ What matters here is ordering, not durations: a guard that elapses before the
 antenna is energised protects nothing. So the tests record register writes and
 sleeps on one timeline and assert on their interleaving.
 """
+
 import pytest
 
 from winnie_nfc import registers as R
@@ -44,7 +45,8 @@ def chip(monkeypatch):
     import winnie_nfc.core
 
     monkeypatch.setattr(
-        winnie_nfc.core.time, "sleep",
+        winnie_nfc.core.time,
+        "sleep",
         lambda d: transport.events.append(("sleep", d)),
     )
     return CLRC663(transport)
@@ -64,9 +66,11 @@ def _field_up_index(events):
 
 def _guard_after(events, index):
     """Total sleep time recorded after `index`."""
-    return sum(d for kind, *rest in
-               ((e[0], *e[1:]) for e in events[index + 1:])
-               for d in ([rest[0]] if kind == "sleep" else []))
+    return sum(
+        d
+        for kind, *rest in ((e[0], *e[1:]) for e in events[index + 1 :])
+        for d in ([rest[0]] if kind == "sleep" else [])
+    )
 
 
 def test_the_guard_elapses_after_the_antenna_is_energised(chip):
@@ -95,8 +99,7 @@ def test_reset_field_drains_then_guards(chip):
     events = chip.t.events
 
     # The field goes down before it comes back up.
-    off = next(i for i, e in enumerate(events)
-               if e == ("write", R.REG_DRVMODE, 0x00))
+    off = next(i for i, e in enumerate(events) if e == ("write", R.REG_DRVMODE, 0x00))
     up = _field_up_index(events)
     assert off < up
 

@@ -61,7 +61,7 @@ from winnie_nfc import NTagReader, NoTagError
 with NTagReader("/dev/ttyACM0") as reader:
     try:
         print(reader.uid().hex(" "))
-        print(reader.read_ndef())        # [{'type': 'uri', ...}]
+        print(reader.read_ndef())  # [{'type': 'uri', ...}]
         reader.write_text("hello winnie")
     except NoTagError:
         print("no tag on the antenna")

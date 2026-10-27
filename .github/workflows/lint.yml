@@ -1,0 +1,21 @@
+name: Lint
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  ruff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - run: pip install ruff==0.17.3  # pinned: a new release can add rules
+      - run: ruff check --output-format github .
+      - run: ruff format --check --diff .
