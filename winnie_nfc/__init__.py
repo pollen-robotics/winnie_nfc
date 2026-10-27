@@ -24,9 +24,18 @@ __all__ = [
     "TagInfo",
     # Exceptions, exposed so that a caller can catch them without knowing the
     # package's internal structure.
-    "TransportError", "DesyncError", "UnexpectedVersionError",
-    "TagError", "NoTagError", "CollisionError", "MalformedResponseError",
-    "Type2Error", "WriteRefusedError", "TagLockedError",
-    "UnknownModelError", "MessageTooLongError",
-    "NdefError", "NdefAbsentError",
+    "TransportError",
+    "DesyncError",
+    "UnexpectedVersionError",
+    "TagError",
+    "NoTagError",
+    "CollisionError",
+    "MalformedResponseError",
+    "Type2Error",
+    "WriteRefusedError",
+    "TagLockedError",
+    "UnknownModelError",
+    "MessageTooLongError",
+    "NdefError",
+    "NdefAbsentError",
 ]

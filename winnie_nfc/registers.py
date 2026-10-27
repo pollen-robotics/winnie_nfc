@@ -62,8 +62,9 @@ ERROR_INTEG = 1 << 0
 # IntegErr. CollDet is NOT among them, so a collision never raises ErrIRQ and
 # cannot be detected from the error branch of a transceive. Collision detection
 # relies on RxColl.CollPosValid, plus the BCC check in iso14443a.py.
-ERROR_RAISES_ERRIRQ = (ERROR_FIFOWR | ERROR_FIFOOVL | ERROR_PROT
-                       | ERROR_NODATA | ERROR_INTEG)
+ERROR_RAISES_ERRIRQ = (
+    ERROR_FIFOWR | ERROR_FIFOOVL | ERROR_PROT | ERROR_NODATA | ERROR_INTEG
+)
 
 # Errors that invalidate the received data: we refuse to hand it back.
 ERROR_INVALID_DATA = ERROR_INTEG | ERROR_PROT
@@ -115,16 +116,20 @@ PROTO_ISO14443A_106 = 0
 
 # Registers recommended for ISO 14443A at 106 kbit/s Miller/Manchester
 # (AN11022). 18 bytes written in sequence starting at REG_DRVMODE (0x28..0x39).
+# fmt: off
 RECOM_14443A_ID1_106 = bytes([
     0x8A, 0x08, 0x21, 0x1A, 0x18, 0x18, 0x0F, 0x27, 0x00,
     0xC0, 0x12, 0xCF, 0x00, 0x04, 0x90, 0x32, 0x12, 0x0A,
 ])
+# fmt: on
 
 VERSION_CLRC663 = 0x1A
 
 # --- SerialSpeed values (table 172) ---
+# fmt: off
 SERIALSPEED = {
     9600: 0xEB, 19200: 0xCB, 38400: 0xAB, 57600: 0x9A,
     115200: 0x7A, 230400: 0x5A, 460800: 0x3A,
     921600: 0x1C, 1228800: 0x15,
 }
+# fmt: on

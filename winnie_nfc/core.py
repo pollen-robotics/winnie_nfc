@@ -80,8 +80,7 @@ class CLRC663:
                 f"supports the CLRC66303."
             )
         raise DesyncError(
-            f"the chip does not answer after {attempts} soft resets "
-            f"({last_error})"
+            f"the chip does not answer after {attempts} soft resets ({last_error})"
         )
 
     def version(self):
@@ -99,13 +98,14 @@ class CLRC663:
         user bytes of an NTAG215 do not fit in that. The datasheet recommends
         changing the size only while the FIFO is empty, hence the flush first.
         """
-        current = self.t.execute([
-            ("w", R.REG_FIFOCONTROL, R.FIFOCONTROL_FLUSH),
-            ("r", R.REG_FIFOCONTROL),
-        ])[1]
+        current = self.t.execute(
+            [
+                ("w", R.REG_FIFOCONTROL, R.FIFOCONTROL_FLUSH),
+                ("r", R.REG_FIFOCONTROL),
+            ]
+        )[1]
         if current & R.FIFOCONTROL_SIZE_255:
-            self.t.write_reg(R.REG_FIFOCONTROL,
-                             current & ~R.FIFOCONTROL_SIZE_255)
+            self.t.write_reg(R.REG_FIFOCONTROL, current & ~R.FIFOCONTROL_SIZE_255)
 
     # ------------------------------------------------------------------
     # FIFO
@@ -149,19 +149,22 @@ class CLRC663:
         self.t.write_reg(R.REG_COMMAND, R.CMD_IDLE)
 
     def clear_irqs(self):
-        self.t.execute([("w", R.REG_IRQ0, R.IRQ_CLEAR_ALL),
-                        ("w", R.REG_IRQ1, R.IRQ_CLEAR_ALL)])
+        self.t.execute(
+            [("w", R.REG_IRQ0, R.IRQ_CLEAR_ALL), ("w", R.REG_IRQ1, R.IRQ_CLEAR_ALL)]
+        )
 
     def load_protocol(self, rx, tx):
         # A single round trip: idle, flush, the two argument bytes and the
         # command are all independent writes.
-        self.t.execute([
-            ("w", R.REG_COMMAND, R.CMD_IDLE),
-            ("w", R.REG_FIFOCONTROL, R.FIFOCONTROL_FLUSH),
-            ("w", R.REG_FIFODATA, rx),
-            ("w", R.REG_FIFODATA, tx),
-            ("w", R.REG_COMMAND, R.CMD_LOADPROTOCOL),
-        ])
+        self.t.execute(
+            [
+                ("w", R.REG_COMMAND, R.CMD_IDLE),
+                ("w", R.REG_FIFOCONTROL, R.FIFOCONTROL_FLUSH),
+                ("w", R.REG_FIFODATA, rx),
+                ("w", R.REG_FIFODATA, tx),
+                ("w", R.REG_COMMAND, R.CMD_LOADPROTOCOL),
+            ]
+        )
         time.sleep(0.01)
 
     def apply_14443a_registers(self):
@@ -187,8 +190,7 @@ class CLRC663:
             time.sleep(guard)
 
     def field_off(self):
-        self.t.execute([("w", R.REG_COMMAND, R.CMD_IDLE),
-                        ("w", R.REG_DRVMODE, 0x00)])
+        self.t.execute([("w", R.REG_COMMAND, R.CMD_IDLE), ("w", R.REG_DRVMODE, 0x00)])
 
     def reset_field(self, delay=0.010, guard=FIELD_GUARD_S):
         """Switch the field off, wait, then switch it back on.
@@ -219,8 +221,9 @@ class CLRC663:
     # ------------------------------------------------------------------
     # transceive
     # ------------------------------------------------------------------
-    def transceive(self, data, timeout_ms=5, tx_bits=8, crc=True,
-                   rx_crc=None, rx_align=0):
+    def transceive(
+        self, data, timeout_ms=5, tx_bits=8, crc=True, rx_crc=None, rx_align=0
+    ):
         """Send data, then return the tag's answer.
 
         Waits for the end of the command (IdleIRQ) by polling. A USB round trip
@@ -249,24 +252,25 @@ class CLRC663:
         # idle and flush are merged into the configuration batch: they are
         # independent writes, and separating them costs two USB round trips at
         # 0.4 ms each on the critical path.
-        self.t.execute([
-            ("w", R.REG_COMMAND, R.CMD_IDLE),
-            ("w", R.REG_FIFOCONTROL, R.FIFOCONTROL_FLUSH),
-            ("w", R.REG_TXDATANUM, num | R.TXDATANUM_DATAEN),
-            ("w", R.REG_TXCRCPRESET, tx_crc_val),
-            ("w", R.REG_RXCRCCON, rx_crc_val),
-            ("w", R.REG_RXBITCTRL, bitctrl),
-            ("w", R.REG_IRQ0, R.IRQ_CLEAR_ALL),
-            ("w", R.REG_IRQ1, R.IRQ_CLEAR_ALL),
-            ("w", R.REG_IRQ0EN, R.IRQ0EN_RX | R.IRQ0EN_ERR),
-            ("w", R.REG_IRQ1EN, R.IRQ1EN_TIMER0),
-            ("w", R.REG_T0CONTROL,
-             R.TCONTROL_CLK_211KHZ | R.TCONTROL_START_TX_END),
-            ("w", R.REG_T0RELOADHI, (ticks >> 8) & 0xFF),
-            ("w", R.REG_T0RELOADLO, ticks & 0xFF),
-            ("w", R.REG_T0COUNTERVALHI, (ticks >> 8) & 0xFF),
-            ("w", R.REG_T0COUNTERVALLO, ticks & 0xFF),
-        ])
+        self.t.execute(
+            [
+                ("w", R.REG_COMMAND, R.CMD_IDLE),
+                ("w", R.REG_FIFOCONTROL, R.FIFOCONTROL_FLUSH),
+                ("w", R.REG_TXDATANUM, num | R.TXDATANUM_DATAEN),
+                ("w", R.REG_TXCRCPRESET, tx_crc_val),
+                ("w", R.REG_RXCRCCON, rx_crc_val),
+                ("w", R.REG_RXBITCTRL, bitctrl),
+                ("w", R.REG_IRQ0, R.IRQ_CLEAR_ALL),
+                ("w", R.REG_IRQ1, R.IRQ_CLEAR_ALL),
+                ("w", R.REG_IRQ0EN, R.IRQ0EN_RX | R.IRQ0EN_ERR),
+                ("w", R.REG_IRQ1EN, R.IRQ1EN_TIMER0),
+                ("w", R.REG_T0CONTROL, R.TCONTROL_CLK_211KHZ | R.TCONTROL_START_TX_END),
+                ("w", R.REG_T0RELOADHI, (ticks >> 8) & 0xFF),
+                ("w", R.REG_T0RELOADLO, ticks & 0xFF),
+                ("w", R.REG_T0COUNTERVALHI, (ticks >> 8) & 0xFF),
+                ("w", R.REG_T0COUNTERVALLO, ticks & 0xFF),
+            ]
+        )
 
         self.command(R.CMD_TRANSCEIVE, bytes(data))
 

@@ -48,8 +48,7 @@ def test_a_write_sends_two_bytes_and_consumes_the_echo():
 def test_a_mixed_pipeline_keeps_the_order():
     # write, read, write, read -> echo, value, echo, value
     t = transport_with(b"\x1f\x11\x1f\x22")
-    res = t.execute([("w", 0x1F, 0x11), ("r", 0x1F),
-                     ("w", 0x1F, 0x22), ("r", 0x1F)])
+    res = t.execute([("w", 0x1F, 0x11), ("r", 0x1F), ("w", 0x1F, 0x22), ("r", 0x1F)])
     assert res == [None, 0x11, None, 0x22]
 
 
@@ -124,10 +123,10 @@ def test_raw_write_sends_without_waiting_for_a_response():
     t._ser = ser
 
     # Send 4 bytes
-    t.raw_write(b"\xFF\x81\x42\x00")
+    t.raw_write(b"\xff\x81\x42\x00")
 
     # Check the bytes went out untouched
-    assert ser.written == b"\xFF\x81\x42\x00"
+    assert ser.written == b"\xff\x81\x42\x00"
     # raw_write must never call read()
     assert not ser.read_called
 
@@ -156,8 +155,7 @@ def test_a_fragmented_read_accumulates_the_bytes():
     # Provide 4 responses that will arrive one byte at a time
     t = fragmented_transport_with(b"\x1f\x11\x1f\x22")
 
-    res = t.execute([("w", 0x1F, 0x11), ("r", 0x1F),
-                     ("w", 0x1F, 0x22), ("r", 0x1F)])
+    res = t.execute([("w", 0x1F, 0x11), ("r", 0x1F), ("w", 0x1F, 0x22), ("r", 0x1F)])
 
     # Check every byte was accumulated and interpreted correctly
     assert res == [None, 0x11, None, 0x22]

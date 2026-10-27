@@ -166,8 +166,10 @@ def cmd_doctor(args):
                 "the size: writing refused"
             )
         state = "read-only" if tag.read_only else "writable"
-        return (f"NDEF area {tag.ndef_bytes} bytes, "
-                f"user memory {tag.user_bytes} bytes, {state}")
+        return (
+            f"NDEF area {tag.ndef_bytes} bytes, "
+            f"user memory {tag.user_bytes} bytes, {state}"
+        )
 
     ok, _, _ = _step("usable capacity", step_capacity)
     if not ok:
@@ -223,8 +225,7 @@ def cmd_erase(args):
     with NTagReader(port=args.port) as reader:
         pages = reader.erase(full=args.full)
     if args.full:
-        print(f"erased: {pages} pages zeroed, user memory back to its "
-              f"factory state")
+        print(f"erased: {pages} pages zeroed, user memory back to its factory state")
     else:
         print("erased: empty NDEF message, the tag reads as blank")
     # The capability container stays: saying so avoids believing the tag is
@@ -239,11 +240,9 @@ def cmd_dump(args):
     with NTagReader(port=args.port) as reader:
         data = reader.dump()
     for offset in range(0, len(data), 16):
-        chunk = data[offset:offset + 16]
+        chunk = data[offset : offset + 16]
         page = type2.PAGE_USER_START + offset // 4
-        printable = "".join(
-            chr(b) if 32 <= b < 127 else "." for b in chunk
-        )
+        printable = "".join(chr(b) if 32 <= b < 127 else "." for b in chunk)
         print(f"p{page:<4} {chunk.hex(' '):<48} {printable}")
     return 0
 
@@ -251,11 +250,10 @@ def cmd_dump(args):
 def main():
     parser = argparse.ArgumentParser(
         prog="winnie-nfc",
-        description="Read and write NFC Type 2 tags through a CLRC663"
+        description="Read and write NFC Type 2 tags through a CLRC663",
     )
     parser.add_argument(
-        "--port", default="/dev/ttyACM0",
-        help="serial port (default /dev/ttyACM0)"
+        "--port", default="/dev/ttyACM0", help="serial port (default /dev/ttyACM0)"
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -269,22 +267,22 @@ def main():
     group = p_write.add_mutually_exclusive_group(required=True)
     group.add_argument("--text", help="text to write")
     group.add_argument("--url", help="URL to write")
-    p_write.add_argument("--lang", default="en",
-                         help="language code of the text (default en)")
+    p_write.add_argument(
+        "--lang", default="en", help="language code of the text (default en)"
+    )
     p_write.set_defaults(func=cmd_write)
 
     p_erase = sub.add_parser(
         "erase", help="make the tag blank (zero-length NDEF message)"
     )
     p_erase.add_argument(
-        "--full", action="store_true",
+        "--full",
+        action="store_true",
         help="zero the whole user memory (slow: one write per page)",
     )
     p_erase.set_defaults(func=cmd_erase)
 
-    p_dump = sub.add_parser(
-        "dump", help="print the tag's whole user memory"
-    )
+    p_dump = sub.add_parser("dump", help="print the tag's whole user memory")
     p_dump.set_defaults(func=cmd_dump)
 
     args = parser.parse_args()

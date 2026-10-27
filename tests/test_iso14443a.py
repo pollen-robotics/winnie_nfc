@@ -1,4 +1,5 @@
 """Tests of reqa and select on a simulated chip, with no hardware."""
+
 import pytest
 
 from winnie_nfc import iso14443a
@@ -28,10 +29,16 @@ def _anticoll(four):
 
 
 def test_7_byte_uid_over_two_levels():
-    l1 = [0x88, 0x04, 0x63, 0x72]   # cascade marker + 3 useful bytes
+    l1 = [0x88, 0x04, 0x63, 0x72]  # cascade marker + 3 useful bytes
     l2 = [0x7E, 0x39, 0x02, 0x89]
-    chip = FakeChip([_anticoll(l1), bytes([0x04]),    # SAK, cascade bit set
-                     _anticoll(l2), bytes([0x00])])   # final SAK
+    chip = FakeChip(
+        [
+            _anticoll(l1),
+            bytes([0x04]),  # SAK, cascade bit set
+            _anticoll(l2),
+            bytes([0x00]),
+        ]
+    )  # final SAK
     uid, sak = iso14443a.select(chip)
     assert uid == bytes([0x04, 0x63, 0x72, 0x7E, 0x39, 0x02, 0x89])
     assert sak == 0x00
@@ -66,8 +73,7 @@ def test_anticollision_response_of_the_wrong_size():
 
 
 def test_sak_of_the_wrong_size():
-    chip = FakeChip([_anticoll([0x11, 0x22, 0x33, 0x44]),
-                     bytes([0x00, 0x00])])
+    chip = FakeChip([_anticoll([0x11, 0x22, 0x33, 0x44]), bytes([0x00, 0x00])])
     with pytest.raises(iso14443a.MalformedResponseError):
         iso14443a.select(chip)
 
