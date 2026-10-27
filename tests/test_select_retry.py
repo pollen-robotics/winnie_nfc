@@ -7,6 +7,7 @@ that the retry repeats the *whole* reset-and-wake sequence — retrying the
 anticollision alone recovered nothing — and that it does not fire when no tag
 answered the wake-up, which is the common case in a polling loop.
 """
+
 import pytest
 
 from winnie_nfc import type2
@@ -105,7 +106,8 @@ def test_a_single_attempt_disables_the_retry(chip, monkeypatch):
 
 
 def test_a_zero_attempt_count_still_raises_rather_than_returning_none(
-        chip, monkeypatch):
+    chip, monkeypatch
+):
     # A bare range() would run zero times here and hand the caller None, which
     # would read as "a tag with no UID" everywhere downstream.
     _patch(monkeypatch, select_fails=99)

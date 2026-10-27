@@ -21,9 +21,7 @@ def test_uri_round_trip_with_a_known_prefix():
     data = ndef.build_uri("https://pollen-robotics.com")
     # https:// is prefix 0x04, it must be abbreviated
     assert b"https://" not in data
-    assert ndef.parse(data) == [
-        {"type": "uri", "value": "https://pollen-robotics.com"}
-    ]
+    assert ndef.parse(data) == [{"type": "uri", "value": "https://pollen-robotics.com"}]
 
 
 def test_uri_round_trip_without_a_known_prefix():
@@ -33,9 +31,7 @@ def test_uri_round_trip_without_a_known_prefix():
 
 def test_accented_text_in_utf8():
     data = ndef.build_text("naïve café façade")
-    assert ndef.parse(data) == [
-        {"type": "text", "value": "naïve café façade"}
-    ]
+    assert ndef.parse(data) == [{"type": "text", "value": "naïve café façade"}]
 
 
 def test_a_blank_tag_holds_no_record():
@@ -75,9 +71,9 @@ def test_round_trip_around_the_255_byte_threshold():
     # + 2 language code bytes + the text.
     for n in (250, 252, 253, 255, 256, 300):
         text = "a" * n
-        assert ndef.parse(ndef.build_text(text)) == [
-            {"type": "text", "value": text}
-        ], f"failed at n={n}"
+        assert ndef.parse(ndef.build_text(text)) == [{"type": "text", "value": text}], (
+            f"failed at n={n}"
+        )
 
 
 def test_long_uri_round_trip():
@@ -103,8 +99,11 @@ def test_empty_text_stays_readable():
 def _raw_record(header, type_name, payload, id_field=b""):
     """Assemble a record by hand, to build cases we never write ourselves."""
     body = bytes([header, len(type_name)])
-    body += bytes([len(payload)]) if header & ndef.FLAG_SR else \
-        len(payload).to_bytes(4, "big")
+    body += (
+        bytes([len(payload)])
+        if header & ndef.FLAG_SR
+        else len(payload).to_bytes(4, "big")
+    )
     if header & ndef.FLAG_IL:
         body += bytes([len(id_field)])
     body += type_name + id_field + payload
@@ -154,8 +153,12 @@ def test_type_t_outside_well_known_is_not_decoded_as_text():
 
 
 def test_format_record():
-    other = {"type": "other", "tnf": 2, "type_name": "text/vcard",
-             "payload": bytes(range(20))}
+    other = {
+        "type": "other",
+        "tnf": 2,
+        "type_name": "text/vcard",
+        "payload": bytes(range(20)),
+    }
     line = ndef.format_record(other)
     assert "text/vcard" in line and "20 bytes" in line and "..." in line
     assert ndef.format_record({"type": "text", "value": "x"}) == "x"
@@ -167,14 +170,11 @@ def test_format_record_escapes_what_the_tag_could_inject():
     assert text["value"] == hostile, "parse must return the content untouched"
     line = ndef.format_record(text)
     assert line.isprintable()
-    assert line == ("\\x1b]0;pwned\\x07\\x1b[2Jok\\nfake line "
-                    "\\u202eabc")
+    assert line == ("\\x1b]0;pwned\\x07\\x1b[2Jok\\nfake line \\u202eabc")
 
-    other = {"type": "other", "tnf": 4, "type_name": "a\x1b[2Jb",
-             "payload": b""}
+    other = {"type": "other", "tnf": 4, "type_name": "a\x1b[2Jb", "payload": b""}
     assert "\x1b" not in ndef.format_record(other)
-    assert ndef.format_record({"type": "text", "value": "été �"}) \
-        == "été �"
+    assert ndef.format_record({"type": "text", "value": "été �"}) == "été �"
 
 
 def test_a_blank_tag_raises_absence_rather_than_malformation():

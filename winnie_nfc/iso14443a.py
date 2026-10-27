@@ -20,6 +20,7 @@ class MalformedResponseError(TagError):
     badly.
     """
 
+
 # SEL per cascade level
 SEL_CL1 = 0x93
 SEL_CL2 = 0x95
@@ -31,13 +32,9 @@ CASCADE_TAG = 0x88  # first byte of an incomplete UID
 
 def _short_request(chip, instruction):
     """REQA and WUPA share the same shape: 7 bits, no CRC."""
-    response = chip.transceive(
-        [instruction], timeout_ms=5, tx_bits=7, crc=False
-    )
+    response = chip.transceive([instruction], timeout_ms=5, tx_bits=7, crc=False)
     if len(response) != 2:
-        raise MalformedResponseError(
-            f"ATQA of {len(response)} bytes, expected 2"
-        )
+        raise MalformedResponseError(f"ATQA of {len(response)} bytes, expected 2")
     return response
 
 
@@ -72,22 +69,17 @@ def select(chip, known_bits=0, partial_uid=b""):
         # NVB = 0x70: 7 bytes sent, full UID requested for this level. With no
         # known UID we first send NVB = 0x20 to collect the 5 response bytes
         # (4 of UID plus the BCC).
-        response = chip.transceive(
-            [sel, 0x20], timeout_ms=5, tx_bits=8, crc=False
-        )
+        response = chip.transceive([sel, 0x20], timeout_ms=5, tx_bits=8, crc=False)
         if len(response) != 5:
             raise MalformedResponseError(
-                f"level {level}: response of {len(response)} bytes, "
-                f"expected 5"
+                f"level {level}: response of {len(response)} bytes, expected 5"
             )
 
         level_uid = response[:4]
         bcc = response[4]
-        if bcc != (level_uid[0] ^ level_uid[1] ^ level_uid[2]
-                   ^ level_uid[3]):
+        if bcc != (level_uid[0] ^ level_uid[1] ^ level_uid[2] ^ level_uid[3]):
             raise CollisionError(
-                f"wrong BCC at level {level}: several tags are likely in "
-                f"the field"
+                f"wrong BCC at level {level}: several tags are likely in the field"
             )
         # An all-zero frame has a trivially valid BCC: that is the hole in the
         # check above. With RxBitCtrl.ValuesAfterColl at 0, every bit after a

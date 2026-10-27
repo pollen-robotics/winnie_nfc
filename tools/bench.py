@@ -71,8 +71,9 @@ from datetime import datetime
 
 import serial
 
-from winnie_nfc import registers as R, type2
-from winnie_nfc.core import CLRC663, TagError
+from winnie_nfc import registers as R
+from winnie_nfc import type2
+from winnie_nfc.core import TagError
 from winnie_nfc.iso14443a import select, wupa
 from winnie_nfc.reader import NTagReader
 from winnie_nfc.transport import TransportError
@@ -114,8 +115,12 @@ def _command(*argv):
     if shutil.which(argv[0]) is None:
         return None
     try:
-        return subprocess.run(argv, capture_output=True, text=True,
-                              timeout=5).stdout.strip() or None
+        return (
+            subprocess.run(
+                argv, capture_output=True, text=True, timeout=5
+            ).stdout.strip()
+            or None
+        )
     except (OSError, subprocess.SubprocessError):
         return None
 
@@ -185,16 +190,20 @@ def measure_link(chip):
         if bad:
             bad_batches += 1
             bad_values += len(bad)
-            bad_samples += [{"batch": batch, "index": i, "value": f"0x{v:02X}"}
-                            for i, v in bad[:LINK_BAD_SAMPLES - len(bad_samples)]]
+            bad_samples += [
+                {"batch": batch, "index": i, "value": f"0x{v:02X}"}
+                for i, v in bad[: LINK_BAD_SAMPLES - len(bad_samples)]
+            ]
 
-    return {"sequential_ms": sequential,
-            "sequential_bad_values": len(seq_bad),
-            "sequential_bad_samples": seq_bad[:LINK_BAD_SAMPLES],
-            "pipelined_ms_per_access": pipelined,
-            "pipelined_bad_batches": bad_batches,
-            "pipelined_bad_values": bad_values,
-            "pipelined_bad_samples": bad_samples}
+    return {
+        "sequential_ms": sequential,
+        "sequential_bad_values": len(seq_bad),
+        "sequential_bad_samples": seq_bad[:LINK_BAD_SAMPLES],
+        "pipelined_ms_per_access": pipelined,
+        "pipelined_bad_batches": bad_batches,
+        "pipelined_bad_values": bad_values,
+        "pipelined_bad_samples": bad_samples,
+    }
 
 
 # ------------------------------------------------------------------ the polls
@@ -234,10 +243,8 @@ def _raw_identify(chip, ms):
             chip.reset_field(guard=0)
             wupa(chip)
             select(chip)
-        model = None if version is None else type2.MODELS.get(
-            (version[2], version[6]))
-        return type2.TagInfo(model=model, version=version,
-                             cc=type2.read_cc(chip))
+        model = None if version is None else type2.MODELS.get((version[2], version[6]))
+        return type2.TagInfo(model=model, version=version, cc=type2.read_cc(chip))
     except TagError as exc:
         raise StepFailed("identify", exc) from exc
     finally:
@@ -245,11 +252,12 @@ def _raw_identify(chip, ms):
 
 
 def _outcome(ms, stage="ok", error=None, **extra):
-    result = {"stage": stage,
-              "error": None if error is None
-              else f"{type(error).__name__}: {error}",
-              "ms": ms,
-              "total_ms": round(sum(ms.values()), 3)}
+    result = {
+        "stage": stage,
+        "error": None if error is None else f"{type(error).__name__}: {error}",
+        "ms": ms,
+        "total_ms": round(sum(ms.values()), 3),
+    }
     result.update(extra)
     return result
 
@@ -291,8 +299,9 @@ def current_read(reader):
         return _outcome(ms, exc.step, exc.error)
     if not read.data:
         return _outcome(ms, "read_tag", TagError(read.error))
-    return _outcome(ms, bytes=len(read.data),
-                    model=read.info.name if read.info else None)
+    return _outcome(
+        ms, bytes=len(read.data), model=read.info.name if read.info else None
+    )
 
 
 def one_poll(chip, reader, pipeline, do_read):
@@ -301,8 +310,7 @@ def one_poll(chip, reader, pipeline, do_read):
         read = raw_read(chip) if do_read and detect["stage"] == "ok" else None
     else:
         detect = current_detect(chip)
-        read = (current_read(reader)
-                if do_read and detect["stage"] == "ok" else None)
+        read = current_read(reader) if do_read and detect["stage"] == "ok" else None
     return detect, read
 
 
@@ -328,20 +336,35 @@ def run_polls(chip, cells, rounds, do_read, seed, out=print):
                 # The link, not the tag. Recover the way the driver does —
                 # soft reset — record it, and carry on.
                 transport_errors += 1
-                polls.append({"round": r, "pipeline": pipeline, "gap": gap,
-                              "t": round(time.monotonic() - start, 3),
-                              "transport_error": str(exc)})
+                polls.append(
+                    {
+                        "round": r,
+                        "pipeline": pipeline,
+                        "gap": gap,
+                        "t": round(time.monotonic() - start, 3),
+                        "transport_error": str(exc),
+                    }
+                )
                 out(f"  transport error: {exc} -> soft reset")
                 try:
                     chip.begin()
                 except TransportError as again:
-                    out(f"  the chip no longer answers ({again}), "
-                        f"stopping after round {r + 1}")
+                    out(
+                        f"  the chip no longer answers ({again}), "
+                        f"stopping after round {r + 1}"
+                    )
                     return polls, transport_errors
                 continue
-            polls.append({"round": r, "pipeline": pipeline, "gap": gap,
-                          "t": round(time.monotonic() - start, 3),
-                          "detect": detect, "read": read})
+            polls.append(
+                {
+                    "round": r,
+                    "pipeline": pipeline,
+                    "gap": gap,
+                    "t": round(time.monotonic() - start, 3),
+                    "detect": detect,
+                    "read": read,
+                }
+            )
         if (r + 1) % 10 == 0:
             out(f"  round {r + 1}/{rounds}")
     return polls, transport_errors
@@ -356,8 +379,7 @@ def wilson(k, n, z=1.96):
         return 0.0, 0.0
     p = k / n
     centre = (p + z * z / (2 * n)) / (1 + z * z / n)
-    half = (z / (1 + z * z / n)) * math.sqrt(p * (1 - p) / n
-                                             + z * z / (4 * n * n))
+    half = (z / (1 + z * z / n)) * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n))
     return max(0.0, centre - half), min(1.0, centre + half)
 
 
@@ -399,8 +421,10 @@ def cell_stats(polls, pipeline, gap):
     read_ok = [r for r in reads if r["stage"] == "ok"]
 
     steps = {}
-    for phase, outcomes in (("detect", [p["detect"] for p in detected]),
-                            ("read", read_ok)):
+    for phase, outcomes in (
+        ("detect", [p["detect"] for p in detected]),
+        ("read", read_ok),
+    ):
         for o in outcomes:
             for step, value in o["ms"].items():
                 steps.setdefault((phase, step), []).append(value)
@@ -410,8 +434,9 @@ def cell_stats(polls, pipeline, gap):
         "transport_errors": len(mine) - len(radio),
         "detect_n": len(radio),
         "detect_ok": len(detected),
-        "detect_fail": Counter(p["detect"]["stage"] for p in radio
-                               if p["detect"]["stage"] != "ok"),
+        "detect_fail": Counter(
+            p["detect"]["stage"] for p in radio if p["detect"]["stage"] != "ok"
+        ),
         "read_n": len(reads),
         "read_ok": len(read_ok),
         "read_fail": Counter(r["stage"] for r in reads if r["stage"] != "ok"),
@@ -431,53 +456,74 @@ def cells_of(result):
 def report(result, out=print):
     """Summary of a single run."""
     host = result["host"]
-    out(f"\n=== {host['hostname']} — {host['board'] or host['machine']} — "
-        f"{result['started']}")
+    out(
+        f"\n=== {host['hostname']} — {host['board'] or host['machine']} — "
+        f"{result['started']}"
+    )
     link = result["link"]
     if link:
         seq = link["sequential_ms"]
-        out(f"link     sequential  median {statistics.median(seq):.3f} ms, "
-            f"p95 {percentile(seq, 0.95):.3f}, max {max(seq):.3f}")
-        out(f"         pipelined   "
+        out(
+            f"link     sequential  median {statistics.median(seq):.3f} ms, "
+            f"p95 {percentile(seq, 0.95):.3f}, max {max(seq):.3f}"
+        )
+        out(
+            f"         pipelined   "
             f"{statistics.median(link['pipelined_ms_per_access']):.4f} ms "
-            f"per access")
+            f"per access"
+        )
         if link.get("sequential_bad_values"):
-            out(f"         SEQUENTIAL WRONG VALUES: "
+            out(
+                f"         SEQUENTIAL WRONG VALUES: "
                 f"{link['sequential_bad_values']}/{len(link['sequential_ms'])}, "
                 f"first: "
-                + ", ".join(f"[{s['index']}]={s['value']}"
-                            for s in link["sequential_bad_samples"][:8]))
+                + ", ".join(
+                    f"[{s['index']}]={s['value']}"
+                    for s in link["sequential_bad_samples"][:8]
+                )
+            )
         if link.get("pipelined_bad_values"):
-            out(f"         PIPELINED WRONG VALUES: "
+            out(
+                f"         PIPELINED WRONG VALUES: "
                 f"{link['pipelined_bad_values']} in "
-                f"{link['pipelined_bad_batches']}/{len(link['pipelined_ms_per_access'])} "
+                f"{link['pipelined_bad_batches']}/"
+                f"{len(link['pipelined_ms_per_access'])} "
                 f"batches of {LINK_ACCESSES}, first: "
-                + ", ".join(f"[{s['batch']}:{s['index']}]={s['value']}"
-                            for s in link["pipelined_bad_samples"][:8]))
-    out(f"throttled before {result['throttled_before']}, "
-        f"after {result['throttled_after']}")
+                + ", ".join(
+                    f"[{s['batch']}:{s['index']}]={s['value']}"
+                    for s in link["pipelined_bad_samples"][:8]
+                )
+            )
+    out(
+        f"throttled before {result['throttled_before']}, "
+        f"after {result['throttled_after']}"
+    )
     if result["transport_errors"]:
         out(f"TRANSPORT ERRORS: {result['transport_errors']}")
 
     for pipeline, gap in cells_of(result):
         s = cell_stats(result["polls"], pipeline, gap)
-        out(f"\n[{pipeline}, {gap * 1000:.0f} ms between polls] "
-            f"{s['polls']} polls")
-        out(f"  detection  {s['detect_ok']:>4}/{s['detect_n']:<4}"
-            f"{_rate(s['detect_ok'], s['detect_n'])}")
+        out(f"\n[{pipeline}, {gap * 1000:.0f} ms between polls] {s['polls']} polls")
+        out(
+            f"  detection  {s['detect_ok']:>4}/{s['detect_n']:<4}"
+            f"{_rate(s['detect_ok'], s['detect_n'])}"
+        )
         for stage, n in s["detect_fail"].most_common():
             out(f"    failed at {stage:<10}{n:>4}")
         if s["read_n"]:
-            out(f"  read       {s['read_ok']:>4}/{s['read_n']:<4}"
-                f"{_rate(s['read_ok'], s['read_n'])}   (of detected tags)")
+            out(
+                f"  read       {s['read_ok']:>4}/{s['read_n']:<4}"
+                f"{_rate(s['read_ok'], s['read_n'])}   (of detected tags)"
+            )
             for stage, n in s["read_fail"].most_common():
                 out(f"    failed at {stage:<10}{n:>4}")
-        for label, values in (("detect", s["detect_ms"]),
-                              ("read", s["read_ms"])):
+        for label, values in (("detect", s["detect_ms"]), ("read", s["read_ms"])):
             if values:
-                out(f"  {label:<7}ms median {_fmt_ms(statistics.median(values))}"
+                out(
+                    f"  {label:<7}ms median {_fmt_ms(statistics.median(values))}"
                     f"  p95 {_fmt_ms(percentile(values, 0.95))}"
-                    f"  max {_fmt_ms(max(values))}")
+                    f"  max {_fmt_ms(max(values))}"
+                )
 
 
 def compare(results, out=print):
@@ -495,28 +541,60 @@ def compare(results, out=print):
     row("throttled before", [str(r["throttled_before"]) for r in results])
     row("throttled after", [str(r["throttled_after"]) for r in results])
     row("transport errors", [str(r["transport_errors"]) for r in results])
-    row("tag", [", ".join(sorted({p["read"]["model"] or "?"
-                                  for p in r["polls"]
-                                  if p.get("read") and
-                                  p["read"]["stage"] == "ok"})) or "-"
-                for r in results])
+    row(
+        "tag",
+        [
+            ", ".join(
+                sorted(
+                    {
+                        p["read"]["model"] or "?"
+                        for p in r["polls"]
+                        if p.get("read") and p["read"]["stage"] == "ok"
+                    }
+                )
+            )
+            or "-"
+            for r in results
+        ],
+    )
 
     out("\n=== serial link (ms)")
-    for key, label in (("sequential_ms", "sequential median"),
-                       ("pipelined_ms_per_access", "pipelined per access")):
-        row(label, [f"{statistics.median(r['link'][key]):.4f}"
-                    if r["link"] else "-" for r in results])
-    row("sequential p95", [f"{percentile(r['link']['sequential_ms'], 0.95):.4f}"
-                           if r["link"] else "-" for r in results])
-    row("sequential wrong values",
-        [str(r["link"].get("sequential_bad_values", "-"))
-         if r["link"] else "-" for r in results])
-    row("pipelined wrong values",
-        [str(r["link"].get("pipelined_bad_values", "-"))
-         if r["link"] else "-" for r in results])
+    for key, label in (
+        ("sequential_ms", "sequential median"),
+        ("pipelined_ms_per_access", "pipelined per access"),
+    ):
+        row(
+            label,
+            [
+                f"{statistics.median(r['link'][key]):.4f}" if r["link"] else "-"
+                for r in results
+            ],
+        )
+    row(
+        "sequential p95",
+        [
+            f"{percentile(r['link']['sequential_ms'], 0.95):.4f}" if r["link"] else "-"
+            for r in results
+        ],
+    )
+    row(
+        "sequential wrong values",
+        [
+            str(r["link"].get("sequential_bad_values", "-")) if r["link"] else "-"
+            for r in results
+        ],
+    )
+    row(
+        "pipelined wrong values",
+        [
+            str(r["link"].get("pipelined_bad_values", "-")) if r["link"] else "-"
+            for r in results
+        ],
+    )
 
-    common = [c for c in cells_of(results[0])
-              if all(c in cells_of(r) for r in results[1:])]
+    common = [
+        c for c in cells_of(results[0]) if all(c in cells_of(r) for r in results[1:])
+    ]
     for pipeline, gap in common:
         stats = [cell_stats(r["polls"], pipeline, gap) for r in results]
         out(f"\n=== [{pipeline}] {gap * 1000:.0f} ms between polls")
@@ -524,43 +602,71 @@ def compare(results, out=print):
         row("detection", [_rate(s["detect_ok"], s["detect_n"]) for s in stats])
         stages = sorted({k for s in stats for k in s["detect_fail"]})
         for stage in stages:
-            row(f"  failed at {stage}",
-                [f"{s['detect_fail'].get(stage, 0)}" for s in stats])
-        row("read (of detected)", [_rate(s["read_ok"], s["read_n"])
-                                   for s in stats])
+            row(
+                f"  failed at {stage}",
+                [f"{s['detect_fail'].get(stage, 0)}" for s in stats],
+            )
+        row("read (of detected)", [_rate(s["read_ok"], s["read_n"]) for s in stats])
         stages = sorted({k for s in stats for k in s["read_fail"]})
         for stage in stages:
-            row(f"  failed at {stage}",
-                [f"{s['read_fail'].get(stage, 0)}" for s in stats])
+            row(
+                f"  failed at {stage}",
+                [f"{s['read_fail'].get(stage, 0)}" for s in stats],
+            )
 
         if len(results) == 2:
             a, b = stats
             for label, ka, na, kb, nb in (
-                    ("detection", a["detect_ok"], a["detect_n"],
-                     b["detect_ok"], b["detect_n"]),
-                    ("read", a["read_ok"], a["read_n"],
-                     b["read_ok"], b["read_n"])):
+                (
+                    "detection",
+                    a["detect_ok"],
+                    a["detect_n"],
+                    b["detect_ok"],
+                    b["detect_n"],
+                ),
+                ("read", a["read_ok"], a["read_n"], b["read_ok"], b["read_n"]),
+            ):
                 p = two_proportions_p(ka, na, kb, nb)
                 if p is not None:
                     diff = 100 * (kb / nb - ka / na)
-                    verdict = ("significant" if p < 0.05
-                               else "within noise")
-                    out(f"  {label} difference {diff:+5.1f} pts, "
-                        f"p = {p:.3g} -> {verdict}")
+                    verdict = "significant" if p < 0.05 else "within noise"
+                    out(
+                        f"  {label} difference {diff:+5.1f} pts, "
+                        f"p = {p:.3g} -> {verdict}"
+                    )
 
         out("  timings, median ms (successful polls only)")
-        keys = sorted({k for s in stats for k in s["steps"]},
-                      key=lambda k: (k[0] != "detect",
-                                     RAW_STEPS.index(k[1])
-                                     if k[1] in RAW_STEPS else 99))
+        keys = sorted(
+            {k for s in stats for k in s["steps"]},
+            key=lambda k: (
+                k[0] != "detect",
+                RAW_STEPS.index(k[1]) if k[1] in RAW_STEPS else 99,
+            ),
+        )
         for phase, step in keys:
-            row(f"  {phase} {step}",
-                [_fmt_ms(statistics.median(s["steps"][(phase, step)]))
-                 if (phase, step) in s["steps"] else "-" for s in stats])
-        row("  detect total", [_fmt_ms(statistics.median(s["detect_ms"]))
-                               if s["detect_ms"] else "-" for s in stats])
-        row("  read total", [_fmt_ms(statistics.median(s["read_ms"]))
-                             if s["read_ms"] else "-" for s in stats])
+            row(
+                f"  {phase} {step}",
+                [
+                    _fmt_ms(statistics.median(s["steps"][(phase, step)]))
+                    if (phase, step) in s["steps"]
+                    else "-"
+                    for s in stats
+                ],
+            )
+        row(
+            "  detect total",
+            [
+                _fmt_ms(statistics.median(s["detect_ms"])) if s["detect_ms"] else "-"
+                for s in stats
+            ],
+        )
+        row(
+            "  read total",
+            [
+                _fmt_ms(statistics.median(s["read_ms"])) if s["read_ms"] else "-"
+                for s in stats
+            ],
+        )
 
 
 # ------------------------------------------------------------------ commands
@@ -575,8 +681,7 @@ def cmd_run(args):
     try:
         reader.__enter__()
     except (TransportError, OSError) as exc:
-        print(f"the board does not answer on {args.port}: {exc}",
-              file=sys.stderr)
+        print(f"the board does not answer on {args.port}: {exc}", file=sys.stderr)
         return 1
     chip = reader._chip
 
@@ -584,9 +689,12 @@ def cmd_run(args):
         "label": args.label or socket.gethostname(),
         "started": datetime.now().isoformat(timespec="seconds"),
         "host": host_info(args.port),
-        "config": {"cells": [{"pipeline": p, "gap": g} for p, g in cells],
-                   "rounds": args.rounds, "read": not args.no_read,
-                   "seed": args.seed},
+        "config": {
+            "cells": [{"pipeline": p, "gap": g} for p, g in cells],
+            "rounds": args.rounds,
+            "read": not args.no_read,
+            "seed": args.seed,
+        },
         "throttled_before": throttled(),
     }
     print(f"{result['label']}: CLRC663 0x{chip.version():02X} on {args.port}")
@@ -596,11 +704,12 @@ def cmd_run(args):
         result["link"] = measure_link(chip)
 
         per_round = sum(g for _, g in cells) + len(cells) * 0.2
-        print(f"{args.rounds} rounds of {len(cells)} polls, "
-              f"about {args.rounds * per_round / 60:.0f} min — "
-              f"leave the tag still on the antenna")
-        polls, errors = run_polls(chip, cells, args.rounds,
-                                  not args.no_read, args.seed)
+        print(
+            f"{args.rounds} rounds of {len(cells)} polls, "
+            f"about {args.rounds * per_round / 60:.0f} min — "
+            f"leave the tag still on the antenna"
+        )
+        polls, errors = run_polls(chip, cells, args.rounds, not args.no_read, args.seed)
     except KeyboardInterrupt:
         print("\ninterrupted, nothing saved")
         return 1
@@ -633,28 +742,47 @@ def cmd_compare(args):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Measure the reader on this host, or compare hosts.")
+        description="Measure the reader on this host, or compare hosts."
+    )
     sub = parser.add_subparsers(dest="command", required=True)
 
     run = sub.add_parser("run", help="measure on this host")
     run.add_argument("--out", required=True, help="JSON file to write")
-    run.add_argument("--port", default="/dev/ttyACM0",
-                     help="serial port (default /dev/ttyACM0)")
-    run.add_argument("--label", help="name of this host in the comparison "
-                                     "(default: the hostname)")
-    run.add_argument("--gaps", type=float, nargs="+",
-                     default=list(DEFAULT_GAPS),
-                     help="seconds between polls (default 0.2 1.0)")
-    run.add_argument("--rounds", type=int, default=DEFAULT_ROUNDS,
-                     help=f"polls per cell (default {DEFAULT_ROUNDS})")
-    run.add_argument("--pipeline", choices=("raw", "current", "both"),
-                     default="raw",
-                     help="raw: without the stability fixes (default); "
-                          "current: the driver as it is; both: alternated")
-    run.add_argument("--no-read", action="store_true",
-                     help="detection only, no content read")
-    run.add_argument("--seed", type=int, default=0,
-                     help="seed of the poll order, identical on both hosts")
+    run.add_argument(
+        "--port", default="/dev/ttyACM0", help="serial port (default /dev/ttyACM0)"
+    )
+    run.add_argument(
+        "--label", help="name of this host in the comparison (default: the hostname)"
+    )
+    run.add_argument(
+        "--gaps",
+        type=float,
+        nargs="+",
+        default=list(DEFAULT_GAPS),
+        help="seconds between polls (default 0.2 1.0)",
+    )
+    run.add_argument(
+        "--rounds",
+        type=int,
+        default=DEFAULT_ROUNDS,
+        help=f"polls per cell (default {DEFAULT_ROUNDS})",
+    )
+    run.add_argument(
+        "--pipeline",
+        choices=("raw", "current", "both"),
+        default="raw",
+        help="raw: without the stability fixes (default); "
+        "current: the driver as it is; both: alternated",
+    )
+    run.add_argument(
+        "--no-read", action="store_true", help="detection only, no content read"
+    )
+    run.add_argument(
+        "--seed",
+        type=int,
+        default=0,
+        help="seed of the poll order, identical on both hosts",
+    )
     run.set_defaults(func=cmd_run)
 
     cmp_ = sub.add_parser("compare", help="compare saved runs")

@@ -79,7 +79,7 @@ class Transport:
             # Split here: the only place in the project that knows this limit.
             results = []
             for i in range(0, len(ops), BATCH_MAX):
-                results += self.execute(ops[i:i + BATCH_MAX])
+                results += self.execute(ops[i : i + BATCH_MAX])
             return results
 
         out = bytearray()

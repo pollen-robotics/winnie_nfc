@@ -55,8 +55,9 @@ class FakeTag:
     def reset_field(self):
         self.reselections += 1
 
-    def transceive(self, data, timeout_ms=5, tx_bits=8, crc=True,
-                   rx_crc=None, rx_align=0):
+    def transceive(
+        self, data, timeout_ms=5, tx_bits=8, crc=True, rx_crc=None, rx_align=0
+    ):
         data = bytes(data)
         self.log.append(data)
 
@@ -130,18 +131,17 @@ def test_identifies_an_ntag215():
 def test_identifies_an_ntag213_and_an_ntag216():
     small = type2.identify(FakeTag(VERSION_NTAG213, CC_NTAG213, 39))
     large = type2.identify(FakeTag(VERSION_NTAG216, CC_NTAG216, 225))
-    assert (small.name, small.ndef_bytes, small.last_page) == (
-        "NTAG213", 144, 39)
-    assert (large.name, large.ndef_bytes, large.last_page) == (
-        "NTAG216", 872, 225)
+    assert (small.name, small.ndef_bytes, small.last_page) == ("NTAG213", 144, 39)
+    assert (large.name, large.ndef_bytes, large.last_page) == ("NTAG216", 872, 225)
 
 
 def test_an_input_capacitance_variant_is_identified_the_same():
     # Bytes 3 and 4 of GET_VERSION encode the input capacitance and the
     # revision: including them in the key would fail the identification.
     for version in (VERSION_UL_EV1_48, VERSION_ULH_EV1_48):
-        info = type2.identify(FakeTag(version, bytes([0xE1, 0x10, 0x06, 0]),
-                                      last_page=15))
+        info = type2.identify(
+            FakeTag(version, bytes([0xE1, 0x10, 0x06, 0]), last_page=15)
+        )
         assert info.ndef_bytes == 48, version.hex(" ")
 
 
@@ -198,9 +198,7 @@ def test_reading_an_ntag216_is_split_to_fit_the_fifo():
     assert len(data) == 888
     transactions = fake.frames(type2.CMD_FAST_READ)
     assert len(transactions) == 2
-    assert all(
-        (f[2] - f[1] + 1) <= type2.FAST_READ_PAGES_MAX for f in transactions
-    )
+    assert all((f[2] - f[1] + 1) <= type2.FAST_READ_PAGES_MAX for f in transactions)
     # No gap and no overlap between the two slices.
     assert transactions[0][1] == type2.PAGE_USER_START
     assert transactions[1][1] == transactions[0][2] + 1
@@ -208,8 +206,7 @@ def test_reading_an_ntag216_is_split_to_fit_the_fifo():
 
 
 def test_reading_without_fast_read_falls_back_to_16_byte_reads():
-    fake = FakeTag(None, bytes([0xE1, 0x10, 0x06, 0x00]), last_page=15,
-                   fast_read=False)
+    fake = FakeTag(None, bytes([0xE1, 0x10, 0x06, 0x00]), last_page=15, fast_read=False)
     info = type2.identify(fake)
     data = type2.read_user_memory(fake, info)
     # 48 bytes declared by the CC, so 12 pages: three READs of 4 pages.
@@ -220,8 +217,7 @@ def test_reading_without_fast_read_falls_back_to_16_byte_reads():
 def test_a_read_is_truncated_at_the_rollover():
     # 40 bytes declared: 10 pages. The last READ returns 4 pages too many,
     # which are the tag's first pages — keeping them would deliver wrong bytes.
-    fake = FakeTag(None, bytes([0xE1, 0x10, 0x05, 0x00]), last_page=15,
-                   fast_read=False)
+    fake = FakeTag(None, bytes([0xE1, 0x10, 0x05, 0x00]), last_page=15, fast_read=False)
     info = type2.identify(fake)
     data = type2.read_user_memory(fake, info)
     assert len(data) == 40
@@ -290,8 +286,7 @@ def test_a_write_to_an_unidentified_tag_stays_within_the_cap():
     assert not written_pages(fake), "no write must have happened"
 
     reader.write_text("hello")
-    last_allowed = (type2.PAGE_USER_START
-                    + type2.UNKNOWN_MODEL_MAX_BYTES // 4 - 1)
+    last_allowed = type2.PAGE_USER_START + type2.UNKNOWN_MODEL_MAX_BYTES // 4 - 1
     assert max(written_pages(fake)) <= last_allowed
 
 
@@ -300,9 +295,7 @@ def test_the_cap_is_the_smallest_supported_model():
 
 
 def test_max_capacity_matches_the_largest_supported_model():
-    assert type2.MAX_CAPACITY == max(
-        m.ndef_bytes for m in type2.MODELS.values()
-    )
+    assert type2.MAX_CAPACITY == max(m.ndef_bytes for m in type2.MODELS.values())
     assert type2.MAX_CAPACITY == 872
 
 
@@ -340,8 +333,7 @@ def test_read_tag_returns_uid_model_and_records_in_one_selection():
     payload = ndef.build_text("hello winnie")
     padded = payload + bytes(-len(payload) % 4)
     for offset in range(0, len(padded), 4):
-        fake.pages[type2.PAGE_USER_START + offset // 4] = \
-            padded[offset:offset + 4]
+        fake.pages[type2.PAGE_USER_START + offset // 4] = padded[offset : offset + 4]
 
     read = _reader_on(fake).read_tag()
     assert read.uid == UID
@@ -425,8 +417,7 @@ def test_read_tag_retries_a_lost_content_read_from_a_new_selection():
     payload = ndef.build_text("hello winnie")
     padded = payload + bytes(-len(payload) % 4)
     for offset in range(0, len(padded), 4):
-        fake.pages[type2.PAGE_USER_START + offset // 4] = \
-            padded[offset:offset + 4]
+        fake.pages[type2.PAGE_USER_START + offset // 4] = padded[offset : offset + 4]
 
     read = _reader_on(fake).read_tag()
     assert read.error is None
@@ -562,8 +553,7 @@ def test_erase_makes_the_tag_blank_in_a_single_write():
     payload = ndef.build_text("to be erased")
     padded = payload + bytes(-len(payload) % 4)
     for offset in range(0, len(padded), 4):
-        fake.pages[type2.PAGE_USER_START + offset // 4] = \
-            padded[offset:offset + 4]
+        fake.pages[type2.PAGE_USER_START + offset // 4] = padded[offset : offset + 4]
 
     pages = _reader_on(fake).erase()
 

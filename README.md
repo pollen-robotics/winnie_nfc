@@ -37,7 +37,7 @@ python3 -m venv .venv
 ```
 
 The editable install (`-e`) makes changes to the source take effect without
-reinstalling. The [test procedure](docs/test-procedure.md) and the tools
+reinstalling. The [test procedure](https://github.com/pollen-robotics/winnie_nfc/blob/main/docs/test-procedure.md) and the tools
 assume this `.venv` at the root of the repository.
 
 ## Command line
@@ -61,7 +61,7 @@ from winnie_nfc import NTagReader, NoTagError
 with NTagReader("/dev/ttyACM0") as reader:
     try:
         print(reader.uid().hex(" "))
-        print(reader.read_ndef())        # [{'type': 'uri', ...}]
+        print(reader.read_ndef())  # [{'type': 'uri', ...}]
         reader.write_text("hello winnie")
     except NoTagError:
         print("no tag on the antenna")
@@ -82,7 +82,7 @@ a phone.
 It also refuses to write a message longer than the tag can hold, or to a tag
 whose size it cannot determine, rather than risk overflowing into those parts.
 Tests enforce these rules; the memory layout is in
-[Type 2 tags](docs/type2-tags.md#ntag215-memory-map).
+[Type 2 tags](https://github.com/pollen-robotics/winnie_nfc/blob/main/docs/type2-tags.md#ntag215-memory-map).
 
 ## Tests
 
@@ -91,22 +91,22 @@ Tests enforce these rules; the memory layout is in
 ```
 
 No hardware needed. To test with the hardware, see the
-[test procedure](docs/test-procedure.md).
+[test procedure](https://github.com/pollen-robotics/winnie_nfc/blob/main/docs/test-procedure.md).
 
-The [`tools/`](tools/README.md) directory holds scripts for continuous reading,
+The [`tools/`](https://github.com/pollen-robotics/winnie_nfc/blob/main/tools/README.md) directory holds scripts for continuous reading,
 batch writing and comparing hosts.
 
 ## Documentation
 
-- [Test procedure](docs/test-procedure.md): hardware validation step by step,
+- [Test procedure](https://github.com/pollen-robotics/winnie_nfc/blob/main/docs/test-procedure.md): hardware validation step by step,
   known pitfalls
-- [Hardware notes](docs/hardware.md): the reader chip and the serial link,
+- [Hardware notes](https://github.com/pollen-robotics/winnie_nfc/blob/main/docs/hardware.md): the reader chip and the serial link,
   soft reset, FIFO, performance
-- [Architecture](docs/architecture.md): modules, design decisions, error
+- [Architecture](https://github.com/pollen-robotics/winnie_nfc/blob/main/docs/architecture.md): modules, design decisions, error
   families, scope
-- [Type 2 tags](docs/type2-tags.md): memory map, commands, write ordering and
+- [Type 2 tags](https://github.com/pollen-robotics/winnie_nfc/blob/main/docs/type2-tags.md): memory map, commands, write ordering and
   safety guarantees
 
 ## License
 
-Apache License 2.0, see [LICENSE](LICENSE).
+Apache License 2.0, see [LICENSE](https://github.com/pollen-robotics/winnie_nfc/blob/main/LICENSE).

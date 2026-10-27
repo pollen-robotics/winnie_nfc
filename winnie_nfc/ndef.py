@@ -28,13 +28,42 @@ STATUS_LANG_MASK = 0x3F
 
 # NFC Forum abbreviation table: the index replaces the string in the payload.
 URI_PREFIXES = (
-    "", "http://www.", "https://www.", "http://", "https://", "tel:",
-    "mailto:", "ftp://anonymous:anonymous@", "ftp://ftp.", "ftps://",
-    "sftp://", "smb://", "nfs://", "ftp://", "dav://", "news:",
-    "telnet://", "imap:", "rtsp://", "urn:", "pop:", "sip:", "sips:",
-    "tftp:", "btspp://", "btl2cap://", "btgoep://", "tcpobex://",
-    "irdaobex://", "file://", "urn:epc:id:", "urn:epc:tag:",
-    "urn:epc:pat:", "urn:epc:raw:", "urn:epc:", "urn:nfc:",
+    "",
+    "http://www.",
+    "https://www.",
+    "http://",
+    "https://",
+    "tel:",
+    "mailto:",
+    "ftp://anonymous:anonymous@",
+    "ftp://ftp.",
+    "ftps://",
+    "sftp://",
+    "smb://",
+    "nfs://",
+    "ftp://",
+    "dav://",
+    "news:",
+    "telnet://",
+    "imap:",
+    "rtsp://",
+    "urn:",
+    "pop:",
+    "sip:",
+    "sips:",
+    "tftp:",
+    "btspp://",
+    "btl2cap://",
+    "btgoep://",
+    "tcpobex://",
+    "irdaobex://",
+    "file://",
+    "urn:epc:id:",
+    "urn:epc:tag:",
+    "urn:epc:pat:",
+    "urn:epc:raw:",
+    "urn:epc:",
+    "urn:nfc:",
 )
 
 
@@ -55,8 +84,9 @@ def _wrap_tlv(payload):
     """Wrap an NDEF message in a TLV, with its terminator."""
     if len(payload) > 0xFE:
         # Long format: 0xFF then the length on 2 big-endian bytes.
-        header = bytes([TLV_NDEF, 0xFF, (len(payload) >> 8) & 0xFF,
-                        len(payload) & 0xFF])
+        header = bytes(
+            [TLV_NDEF, 0xFF, (len(payload) >> 8) & 0xFF, len(payload) & 0xFF]
+        )
     else:
         header = bytes([TLV_NDEF, len(payload)])
     return header + payload + bytes([TLV_TERMINATOR])
@@ -78,8 +108,7 @@ def _build_record(rtd, payload):
     header = FLAG_MB | FLAG_ME | TNF_WELL_KNOWN
     if len(payload) <= 0xFF:
         return bytes([header | FLAG_SR, len(rtd), len(payload)]) + rtd + payload
-    return (bytes([header, len(rtd)])
-            + len(payload).to_bytes(4, "big") + rtd + payload)
+    return bytes([header, len(rtd)]) + len(payload).to_bytes(4, "big") + rtd + payload
 
 
 def build_text(text, lang="en"):
@@ -93,8 +122,7 @@ def build_text(text, lang="en"):
     if len(lang_bytes) > 0x3F:
         raise NdefError(f"language code too long: {lang}")
     # Status byte: bit 7 clear = UTF-8, bits 5..0 = length of the language code.
-    payload = (bytes([len(lang_bytes)]) + lang_bytes
-               + text.encode("utf-8"))
+    payload = bytes([len(lang_bytes)]) + lang_bytes + text.encode("utf-8")
     return _wrap_tlv(_build_record(RTD_TEXT, payload))
 
 
@@ -102,9 +130,8 @@ def build_uri(uri):
     """Abbreviate the longest possible prefix, to save bytes."""
     index, rest = 0, uri
     for i, prefix in enumerate(URI_PREFIXES):
-        if prefix and uri.startswith(prefix) and len(prefix) > len(
-                URI_PREFIXES[index]):
-            index, rest = i, uri[len(prefix):]
+        if prefix and uri.startswith(prefix) and len(prefix) > len(URI_PREFIXES[index]):
+            index, rest = i, uri[len(prefix) :]
     payload = bytes([index]) + rest.encode("utf-8")
     return _wrap_tlv(_build_record(RTD_URI, payload))
 
@@ -131,15 +158,12 @@ def _extract_message(data):
             start = i + 2
         if start + length > len(data):
             raise NdefError(
-                f"the TLV announces {length} bytes, "
-                f"{len(data) - start} available"
+                f"the TLV announces {length} bytes, {len(data) - start} available"
             )
         if tlv == TLV_NDEF:
-            return data[start:start + length]
+            return data[start : start + length]
         i = start + length
-    raise NdefAbsentError(
-        "no NDEF TLV found: blank or unformatted tag"
-    )
+    raise NdefAbsentError("no NDEF TLV found: blank or unformatted tag")
 
 
 def _decode_text(body):
@@ -155,11 +179,10 @@ def _decode_text(body):
     """
     status = body[0]
     n = status & STATUS_LANG_MASK
-    lang = body[1:1 + n].decode("ascii", errors="replace")
-    raw = body[1 + n:]
+    lang = body[1 : 1 + n].decode("ascii", errors="replace")
+    raw = body[1 + n :]
     if status & STATUS_UTF16:
-        encoding = "utf-16" if raw[:2] in (b"\xff\xfe", b"\xfe\xff") \
-            else "utf-16-be"
+        encoding = "utf-16" if raw[:2] in (b"\xff\xfe", b"\xfe\xff") else "utf-16-be"
     else:
         encoding = "utf-8"
     return raw.decode(encoding, errors="replace"), lang
@@ -203,7 +226,7 @@ def parse(data):
         else:
             if i + 4 > len(payload):
                 raise NdefError("truncated record: missing long length")
-            payload_length = int.from_bytes(payload[i:i + 4], "big")
+            payload_length = int.from_bytes(payload[i : i + 4], "big")
             i += 4
 
         # The ID_LENGTH field only exists when the IL flag is set. Forgetting
@@ -217,10 +240,10 @@ def parse(data):
             id_length = payload[i]
             i += 1
 
-        record_type = payload[i:i + type_length]
+        record_type = payload[i : i + type_length]
         i += type_length
         i += id_length  # the ID itself is of no interest to this module
-        body = payload[i:i + payload_length]
+        body = payload[i : i + payload_length]
         i += payload_length
 
         if len(body) != payload_length:
@@ -236,17 +259,21 @@ def parse(data):
         elif known and record_type == RTD_URI:
             index = body[0]
             prefix = URI_PREFIXES[index] if index < len(URI_PREFIXES) else ""
-            records.append({
-                "type": "uri",
-                "value": prefix + body[1:].decode("utf-8", errors="replace"),
-            })
+            records.append(
+                {
+                    "type": "uri",
+                    "value": prefix + body[1:].decode("utf-8", errors="replace"),
+                }
+            )
         else:
-            records.append({
-                "type": "other",
-                "tnf": tnf,
-                "type_name": record_type.decode("ascii", errors="replace"),
-                "payload": bytes(body),
-            })
+            records.append(
+                {
+                    "type": "other",
+                    "tnf": tnf,
+                    "type_name": record_type.decode("ascii", errors="replace"),
+                    "payload": bytes(body),
+                }
+            )
 
         if header & FLAG_ME:
             break

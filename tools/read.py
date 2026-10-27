@@ -103,8 +103,7 @@ def show_tag(uid, chip):
         print(f"              {info.name}: unknown size, writing refused")
     else:
         state = "read-only" if info.read_only else "writable"
-        print(f"              {info.name}, NDEF area {info.ndef_bytes} "
-              f"bytes, {state}")
+        print(f"              {info.name}, NDEF area {info.ndef_bytes} bytes, {state}")
 
     records, error = read_content(chip, info)
     if error:
@@ -113,8 +112,7 @@ def show_tag(uid, chip):
         print("              blank tag, no NDEF record")
     else:
         for record in records:
-            print(f"              {record['type']:6}: "
-                  f"{format_record(record)}")
+            print(f"              {record['type']:6}: {format_record(record)}")
 
 
 def watch(args):
@@ -127,8 +125,7 @@ def watch(args):
     except (TransportError, OSError) as exc:
         print(f"board not found on {args.port}: {exc}", file=sys.stderr)
         print("-> check the connection: ls /dev/ttyACM*", file=sys.stderr)
-        print("-> and your membership of the dialout group: id -nG",
-              file=sys.stderr)
+        print("-> and your membership of the dialout group: id -nG", file=sys.stderr)
         return 1
 
     chip = CLRC663(transport)
@@ -137,8 +134,7 @@ def watch(args):
         version = check_board(chip)
     except (TransportError, TagError) as exc:
         print(f"the chip does not answer: {exc}", file=sys.stderr)
-        print("-> unplug and replug the board, then run this again",
-              file=sys.stderr)
+        print("-> unplug and replug the board, then run this again", file=sys.stderr)
         transport.close()
         return 1
 
@@ -178,16 +174,20 @@ def main():
     parser = argparse.ArgumentParser(
         description="Watch the antenna and read every tag presented to it."
     )
-    parser.add_argument("--port", default="/dev/ttyACM0",
-                        help="serial port (default /dev/ttyACM0)")
-    parser.add_argument("--rate", type=float, default=5.0,
-                        help="polls per second (default 5)")
+    parser.add_argument(
+        "--port", default="/dev/ttyACM0", help="serial port (default /dev/ttyACM0)"
+    )
+    parser.add_argument(
+        "--rate", type=float, default=5.0, help="polls per second (default 5)"
+    )
     args = parser.parse_args()
 
     if args.rate <= 0 or args.rate > 20:
-        print("the rate must sit between 0 and 20 Hz: a detection costs "
-              "~35 ms, beyond that we poll faster than the hardware answers",
-              file=sys.stderr)
+        print(
+            "the rate must sit between 0 and 20 Hz: a detection costs "
+            "~35 ms, beyond that we poll faster than the hardware answers",
+            file=sys.stderr,
+        )
         return 1
     return watch(args)
 
