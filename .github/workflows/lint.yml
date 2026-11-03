@@ -19,3 +19,14 @@ jobs:
       - run: pip install ruff==0.17.3  # pinned: a new release can add rules
       - run: ruff check --output-format github .
       - run: ruff format --check --diff .
+
+  ty:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      # The package itself, for ty to resolve pyserial.
+      - run: pip install . ty==0.0.94  # pinned: 0.0.x, rules still change
+      - run: ty check --python "$(command -v python)"

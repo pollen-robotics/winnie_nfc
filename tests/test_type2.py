@@ -325,6 +325,14 @@ def _reader_on(fake):
     return reader
 
 
+def test_a_reader_used_outside_with_raises_a_transport_error():
+    from winnie_nfc.reader import NTagReader
+    from winnie_nfc.transport import TransportError
+
+    with pytest.raises(TransportError, match="not open"):
+        NTagReader(port="/dev/ttyACM0").read_ndef()
+
+
 def test_read_tag_returns_uid_model_and_records_in_one_selection():
     from winnie_nfc import ndef
 

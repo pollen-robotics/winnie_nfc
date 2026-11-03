@@ -61,6 +61,7 @@ Leave the tag still on the antenna for the whole run.
 """
 
 import argparse
+import io
 import json
 import math
 import os
@@ -108,10 +109,8 @@ class StepFailed(Exception):
 
 
 def _line_buffered_output():
-    try:
+    if isinstance(sys.stdout, io.TextIOWrapper):
         sys.stdout.reconfigure(line_buffering=True)
-    except AttributeError:  # Python < 3.7
-        pass
 
 
 # ------------------------------------------------------------------ the host
@@ -742,7 +741,7 @@ def cmd_run(args):
     except (TransportError, OSError) as exc:
         print(f"the board does not answer: {exc}", file=sys.stderr)
         return 1
-    chip = reader._chip
+    chip = reader._open_chip
 
     result = {
         "label": args.label or socket.gethostname(),

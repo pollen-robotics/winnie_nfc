@@ -15,6 +15,7 @@ removed, then waits for the next one. Ctrl+C to stop.
 """
 
 import argparse
+import io
 import sys
 import time
 
@@ -35,10 +36,8 @@ def _line_buffered_output():
     Without this, print() is buffered in blocks as soon as the output is not a
     terminal: a Ctrl+C or a kill would lose everything not yet flushed.
     """
-    try:
+    if isinstance(sys.stdout, io.TextIOWrapper):
         sys.stdout.reconfigure(line_buffering=True)
-    except AttributeError:  # Python < 3.7
-        pass
 
 
 def timestamp():
