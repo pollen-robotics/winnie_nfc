@@ -158,7 +158,12 @@ class NTagReader:
         return type2.identify(self._chip)
 
     def read_ndef(self):
-        """NDEF records of the tag. Raises NdefAbsentError on a blank tag."""
+        """NDEF records of the tag.
+
+        A tag erased by this driver holds an empty NDEF message and returns [].
+        A tag with no NDEF message at all, such as a factory one, raises
+        NdefAbsentError.
+        """
         type2.select_tag(self._chip)
         info = type2.identify(self._chip)
         return ndef.parse(type2.read_user_memory(self._chip, info))
@@ -232,10 +237,6 @@ class NTagReader:
         type2.select_tag(self._chip)
         info = type2.identify(self._chip)
         return type2.read_user_memory(self._chip, info)
-
-    # Kept for callers that referred to it; the definition now lives at module
-    # level.
-    EMPTY_TLV = EMPTY_TLV
 
     def _write(self, payload):
         """Check the capacity of the tag on the antenna, then write the TLV."""

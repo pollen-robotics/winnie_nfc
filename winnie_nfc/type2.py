@@ -32,21 +32,6 @@ SELECT_ATTEMPTS = 3
 
 PAGE_CC = 3
 PAGE_USER_START = 4
-PAGE_USER_END = 129
-
-# Raw user memory of an NTAG215: pages 4 to 129, 126 pages of 4 bytes.
-USER_BYTES = 504
-
-# NDEF area declared by the capability container of an NTAG215: 0x3E * 8 = 496
-# bytes, 8 fewer than the raw user memory. This is the bound that limits an
-# NDEF message, not USER_BYTES: writing beyond it would overrun what the tag
-# declares to readers, and a phone could then refuse the content.
-NDEF_BYTES = 496
-
-# Factory values, checked on a real tag and in the NXP documentation.
-# 0x3E encodes 496 bytes. Beware, 0x3F is a widespread mistake.
-CC_NTAG215 = bytes([0xE1, 0x10, 0x3E, 0x00])
-VERSION_NTAG215 = bytes([0x00, 0x04, 0x04, 0x02, 0x01, 0x00, 0x11, 0x03])
 
 # First byte of the capability container: 0xE1 marks an NDEF-formatted area.
 CC_MAGIC = 0xE1
@@ -309,21 +294,6 @@ def check_capacity(chip, nbytes, info=None):
         )
 
     return info
-
-
-def check_ntag215(chip):
-    """Raise Type2Error unless the selected tag is exactly an NTAG215.
-
-    Kept for diagnosis, where the point is to know whether the board really
-    has the reference model in front of it. Writes go through check_capacity,
-    which accepts other models within their capacity.
-    """
-    version = get_version(chip)
-    if version != VERSION_NTAG215:
-        raise Type2Error(
-            f"GET_VERSION returns {version.hex(' ')}, this is not an NTAG215 "
-            f"({VERSION_NTAG215.hex(' ')} expected)."
-        )
 
 
 def get_version(chip):
