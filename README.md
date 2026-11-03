@@ -10,8 +10,10 @@ command-line tool.
 ## Requirements
 
 - Linux, Python ≥ 3.9
-- The Winnie NFC board (`ASE01209`), revisions A1 to A3, plugged in over USB.
-  It shows up as `/dev/ttyACM0`
+- The Winnie NFC board (`ASE01209`), revisions A1 to A3, plugged in over USB,
+  with its USB product string flashed to `Winnie NFC <version>`: that is how
+  the driver finds it (see
+  [USB identity](https://github.com/pollen-robotics/winnie_nfc/blob/main/docs/hardware.md#usb-identity))
 - Read/write access to the serial port: add your user to the `dialout` group
 
 ## Installation
@@ -51,14 +53,14 @@ winnie-nfc erase                                  # empty NDEF message (--full: 
 winnie-nfc dump                                   # hex dump of the user memory
 ```
 
-All commands take `--port` (default `/dev/ttyACM0`).
+All commands find the board by its USB product string, or take `--port`.
 
 ## Python API
 
 ```python
 from winnie_nfc import NTagReader, NoTagError
 
-with NTagReader("/dev/ttyACM0") as reader:
+with NTagReader() as reader:  # or NTagReader("/dev/ttyACM1")
     try:
         print(reader.uid().hex(" "))
         print(reader.read_ndef())  # [{'type': 'uri', ...}]
@@ -71,6 +73,11 @@ with NTagReader("/dev/ttyACM0") as reader:
 data in a single selection), `write_uri()`, `erase()` and `dump()`. All
 exceptions are exported from `winnie_nfc`.
 
+A service that keeps the reader open and polls the antenna should call
+`field_off()` after each poll: otherwise the RF field stays on for as long as
+the reader is open. The port is opened exclusively, so a second driver cannot
+take the board from under the first.
+
 ## Safety
 
 The driver cannot damage a tag. It only writes to the area that holds the tag's
@@ -78,6 +85,10 @@ content, and never to the parts that would make a tag unusable for good: its
 identifier, its NDEF formatting, its locks, configuration or password. A tag
 written or erased by this driver can always be rewritten, and stays readable by
 a phone.
+
+A tag partly locked by another tool is the exception: the driver detects a tag
+declared read-only, but not lock bits or a password set on some pages only. A
+write that reaches such a page fails and leaves the tag blank.
 
 It also refuses to write a message longer than the tag can hold, or to a tag
 whose size it cannot determine, rather than risk overflowing into those parts.

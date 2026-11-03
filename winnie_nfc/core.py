@@ -16,6 +16,14 @@ from .transport import DesyncError
 # points between identical runs.
 FIELD_GUARD_S = 0.005
 
+# How long transceive() keeps polling after the chip's own timeout. With no tag
+# in the field the CLRC663 does not go idle on its timer, so every exchange on
+# an empty antenna — the common case when polling — lasts its timeout plus this
+# margin. The margin only has to cover the host's latency in seeing an answer
+# that did come: a round trip, 0.4 ms on a PC or a CM4, 5 ms on the slowest
+# host seen. Check any change with test D8 of test-procedure.md.
+TRANSCEIVE_MARGIN_S = 0.020
+
 
 class TagError(Exception):
     """Something went wrong at the tag level."""
@@ -227,9 +235,9 @@ class CLRC663:
         """Send data, then return the tag's answer.
 
         Waits for the end of the command (IdleIRQ) by polling. A USB round trip
-        costs 0.4 ms on a recent PC but ~5 ms on a slower host (Ideapad S510p,
-        CM4): no assumption about the host's latency holds, the chip has to be
-        polled until it is done.
+        costs 0.4 ms on a recent PC or a CM4 but ~5 ms on a slower host
+        (Ideapad S510p): no assumption about the host's latency holds, the chip
+        has to be polled until it is done.
 
         tx_bits: number of bits in the last byte (7 for REQA, 8 otherwise).
 
@@ -284,7 +292,7 @@ class CLRC663:
         # while RxIRQ is only raised after Timer0 expires, and stopping on
         # Timer0 then fails most SELECTs.
         status_regs = [R.REG_IRQ0, R.REG_IRQ1, R.REG_ERROR, R.REG_RXCOLL]
-        deadline = time.monotonic() + timeout_ms / 1000.0 + 0.1
+        deadline = time.monotonic() + timeout_ms / 1000.0 + TRANSCEIVE_MARGIN_S
         while True:
             irq0, irq1, error, rxcoll = self.t.read_regs(status_regs)
             if irq0 & (R.IRQ0_IDLE | R.IRQ0_ERR) or time.monotonic() > deadline:

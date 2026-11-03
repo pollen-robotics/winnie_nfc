@@ -17,6 +17,8 @@ import time
 
 import serial
 
+from . import usb
+
 READ_FLAG = 0x80
 BATCH_MAX = 512
 
@@ -32,14 +34,38 @@ class DesyncError(TransportError):
     """
 
 
+def find_port():
+    """The port of the Winnie board plugged in, found by its USB product string.
+
+    Not a fixed path: another CH343 device may come first in the enumeration
+    and get /dev/ttyACM0 (see usb.py).
+    """
+    ports = usb.winnie_ports()
+    if not ports:
+        raise TransportError(
+            f"no Winnie board found: no USB serial port reports the product "
+            f"string '{usb.PRODUCT_PREFIX} <version>'. Plug the board in, or "
+            f"give its port explicitly."
+        )
+    if len(ports) > 1:
+        raise TransportError(
+            f"{len(ports)} Winnie boards found ({', '.join(ports)}): give the "
+            f"port explicitly."
+        )
+    return ports[0]
+
+
 class Transport:
-    def __init__(self, port="/dev/ttyACM0", baudrate=115200, timeout=0.3):
+    def __init__(self, port=None, baudrate=115200, timeout=0.3):
+        """`port` None: the board is found by its USB product string on open()."""
         self.port = port
         self.baudrate = baudrate
         self.timeout = timeout
         self._ser = None
 
     def open(self):
+        if self.port is None:
+            self.port = find_port()
         s = serial.Serial()
         s.port = self.port
         s.baudrate = self.baudrate
@@ -48,6 +74,9 @@ class Transport:
         # effect on this board, but its /DTR and /RTS pads are wired.
         s.dtr = False
         s.rts = False
+        # An advisory lock (flock): a second driver opening the board this way
+        # is refused instead of desynchronising the chip under the first one.
+        s.exclusive = True
         s.open()
         self._ser = s
 

@@ -5,10 +5,12 @@ antenna is energised protects nothing. So the tests record register writes and
 sleeps on one timeline and assert on their interleaving.
 """
 
+import time
+
 import pytest
 
 from winnie_nfc import registers as R
-from winnie_nfc.core import CLRC663, FIELD_GUARD_S
+from winnie_nfc.core import CLRC663, FIELD_GUARD_S, TRANSCEIVE_MARGIN_S, NoTagError
 
 
 class FakeTransport:
@@ -124,3 +126,12 @@ def test_the_guard_can_be_waived(chip):
     chip.field_on(guard=0)
     events = chip.t.events
     assert _guard_after(events, _field_up_index(events)) == 0
+
+
+def test_an_empty_antenna_costs_the_timeout_plus_the_margin(chip):
+    # The fake chip never goes idle, like the real one with no tag in the field.
+    start = time.monotonic()
+    with pytest.raises(NoTagError):
+        chip.transceive([0x52], timeout_ms=5, tx_bits=7, crc=False)
+    elapsed = time.monotonic() - start
+    assert TRANSCEIVE_MARGIN_S <= elapsed < 0.005 + TRANSCEIVE_MARGIN_S + 0.05

@@ -187,3 +187,8 @@ def test_a_blank_tag_raises_absence_rather_than_malformation():
     with pytest.raises(ndef.NdefError) as exc:
         ndef.parse(bytes([0x03, 0x50, 0x01, 0x02]))
     assert not isinstance(exc.value, ndef.NdefAbsentError)
+
+
+def test_a_non_ascii_language_code_is_a_usage_error():
+    with pytest.raises(ndef.NdefError):
+        ndef.build_text("hello", lang="é")

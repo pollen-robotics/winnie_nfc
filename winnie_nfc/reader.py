@@ -107,7 +107,8 @@ class NTagReader:
             print(r.read_ndef())
     """
 
-    def __init__(self, port="/dev/ttyACM0"):
+    def __init__(self, port=None):
+        """`port` None: the board is found by its USB product string."""
         self._transport = Transport(port=port)
         self._chip = None
 
@@ -139,6 +140,14 @@ class NTagReader:
     def uid(self):
         return type2.select_tag(self._chip)
 
+    def field_off(self):
+        """Switch the RF field off; the next operation switches it back on.
+
+        A service that keeps the reader open calls it after each poll,
+        otherwise the antenna stays powered until the reader is closed.
+        """
+        self._chip.field_off()
+
     def chip_version(self):
         """Version reported by the CLRC663. 0x1A for a CLRC66303."""
         return self._chip.version()
@@ -149,7 +158,12 @@ class NTagReader:
         return type2.identify(self._chip)
 
     def read_ndef(self):
-        """NDEF records of the tag. Raises NdefAbsentError on a blank tag."""
+        """NDEF records of the tag.
+
+        A tag erased by this driver holds an empty NDEF message and returns [].
+        A tag with no NDEF message at all, such as a factory one, raises
+        NdefAbsentError.
+        """
         type2.select_tag(self._chip)
         info = type2.identify(self._chip)
         return ndef.parse(type2.read_user_memory(self._chip, info))
@@ -159,7 +173,7 @@ class NTagReader:
 
         A service watching the antenna needs all of it on every tag arrival:
         getting it through uid() then read_ndef() would cost two selections, so
-        ~70 ms of detection instead of ~35, out of a 200 ms budget at 5 Hz.
+        ~140 ms of detection instead of ~70, out of a 200 ms budget at 5 Hz.
 
         Only raises when the field is empty (NoTagError) or when the serial
         link breaks. Any tag that answered the SELECT returns its UID, even
@@ -223,10 +237,6 @@ class NTagReader:
         type2.select_tag(self._chip)
         info = type2.identify(self._chip)
         return type2.read_user_memory(self._chip, info)
-
-    # Kept for callers that referred to it; the definition now lives at module
-    # level.
-    EMPTY_TLV = EMPTY_TLV
 
     def _write(self, payload):
         """Check the capacity of the tag on the antenna, then write the TLV."""

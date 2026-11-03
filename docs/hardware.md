@@ -18,6 +18,26 @@ driver. Users of the library never see the chip, but every design decision in
 | `SerialSpeed` (`0x3B`) at reset | `0x7A` = **115200 baud** |
 | `FIFOControl` (`0x02`) at reset | `0xA0` → bit 7 set → FIFO of **255 bytes** |
 
+## USB identity
+
+The CH343 leaves the factory with WCH's identity: `1a86:55d3`, product string
+`USB Single Serial`. Other devices use the same bridge with the same identity —
+a Reachy Mini Lite's motor bus among them — so the IDs do not tell the board
+apart, and neither does `/dev/ttyACM0`, which goes to whichever enumerates
+first.
+
+Each board therefore has its product string flashed to `Winnie NFC <version>`
+(`Winnie NFC A3`), the IDs staying unchanged. The driver finds the board by
+that string when no port is given, and `winnie-nfc doctor` checks it before
+opening a port.
+
+To check a board without opening its port:
+
+```bash
+cat /sys/class/tty/ttyACM0/device/../product   # Winnie NFC A3
+ls /dev/serial/by-id/                          # ..._Winnie_NFC_A3_...
+```
+
 ## Register protocol
 
 - **Write:** send `[reg & 0x7F, value]`. The chip echoes the address byte,

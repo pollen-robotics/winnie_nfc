@@ -3,11 +3,11 @@
 import argparse
 import sys
 
-from . import type2
+from . import type2, usb
 from .core import CLRC663, NoTagError, TagError
 from .iso14443a import reqa, select
 from .ndef import NdefAbsentError, NdefError, format_record
-from .transport import Transport, TransportError
+from .transport import Transport, TransportError, find_port
 
 OK = "  [ok]  "
 KO = "  [KO]  "
@@ -57,7 +57,31 @@ def _fail(transport, hint, chip=None):
 
 def cmd_doctor(args):
     """Walk up the stack layer by layer, stopping at the first break."""
-    print(f"Diagnostics on {args.port}\n")
+    print("Diagnostics\n")
+
+    # Checked before the port is opened, so that nothing is ever sent to a
+    # device that only shares the board's USB bridge (see usb.py).
+    def step_usb():
+        if args.port is None:
+            args.port = find_port()
+        info = usb.port_info(args.port)
+        if info is None:
+            raise TransportError(f"no USB serial device at {args.port}")
+        if not usb.is_winnie(info.product) and not args.unflashed:
+            raise TransportError(
+                f"{args.port} reports {info.product!r}, "
+                f"not '{usb.PRODUCT_PREFIX} <version>'"
+            )
+        return f"{args.port}, {info.product}"
+
+    ok, _, _ = _step("USB identity", step_usb)
+    if not ok:
+        print(
+            "\n-> check that the board is plugged in: ls /dev/serial/by-id/\n"
+            "   An unflashed board reports 'USB Single Serial': flash it, see\n"
+            "   docs/hardware.md. --unflashed to go on anyway."
+        )
+        return 1
 
     transport = Transport(port=args.port)
     ok, _, _ = _step("serial port can be opened", lambda: transport.open() or "")
@@ -210,7 +234,7 @@ def cmd_write(args):
     from .reader import NTagReader
 
     with NTagReader(port=args.port) as reader:
-        if args.url:
+        if args.url is not None:
             reader.write_uri(args.url)
             print(f"written: uri {args.url}")
         else:
@@ -253,11 +277,17 @@ def main():
         description="Read and write NFC Type 2 tags through a CLRC663",
     )
     parser.add_argument(
-        "--port", default="/dev/ttyACM0", help="serial port (default /dev/ttyACM0)"
+        "--port",
+        help="serial port (default: the board found by its USB product string)",
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
     p_doctor = sub.add_parser("doctor", help="layer-by-layer diagnostics")
+    p_doctor.add_argument(
+        "--unflashed",
+        action="store_true",
+        help="go on when the USB product string is not 'Winnie NFC <version>'",
+    )
     p_doctor.set_defaults(func=cmd_doctor)
 
     p_read = sub.add_parser("read", help="read the NDEF content")
@@ -288,9 +318,10 @@ def main():
     args = parser.parse_args()
     try:
         return args.func(args)
-    except (TransportError, TagError, NdefError) as exc:
-        # The three domain error families: transport, tag, content. Everything
-        # else comes up with its traceback, as in _step.
+    except (TransportError, TagError, NdefError, OSError) as exc:
+        # The three domain error families — transport, tag, content — and the
+        # system errors of opening a port (serial.SerialException is an
+        # OSError). Everything else comes up with its traceback, as in _step.
         print(f"error: {exc}", file=sys.stderr)
         return 1
 
