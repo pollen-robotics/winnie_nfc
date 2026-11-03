@@ -10,8 +10,10 @@ command-line tool.
 ## Requirements
 
 - Linux, Python ≥ 3.9
-- The Winnie NFC board (`ASE01209`), revisions A1 to A3, plugged in over USB.
-  It shows up as `/dev/ttyACM0`
+- The Winnie NFC board (`ASE01209`), revisions A1 to A3, plugged in over USB,
+  with its USB product string flashed to `Winnie NFC <version>`: that is how
+  the driver finds it (see
+  [USB identity](https://github.com/pollen-robotics/winnie_nfc/blob/main/docs/hardware.md#usb-identity))
 - Read/write access to the serial port: add your user to the `dialout` group
 
 ## Installation
@@ -51,14 +53,14 @@ winnie-nfc erase                                  # empty NDEF message (--full: 
 winnie-nfc dump                                   # hex dump of the user memory
 ```
 
-All commands take `--port` (default `/dev/ttyACM0`).
+All commands find the board by its USB product string, or take `--port`.
 
 ## Python API
 
 ```python
 from winnie_nfc import NTagReader, NoTagError
 
-with NTagReader("/dev/ttyACM0") as reader:
+with NTagReader() as reader:  # or NTagReader("/dev/ttyACM1")
     try:
         print(reader.uid().hex(" "))
         print(reader.read_ndef())  # [{'type': 'uri', ...}]
@@ -70,6 +72,11 @@ with NTagReader("/dev/ttyACM0") as reader:
 `NTagReader` also provides `info()`, `read_tag()` (UID, model, records and raw
 data in a single selection), `write_uri()`, `erase()` and `dump()`. All
 exceptions are exported from `winnie_nfc`.
+
+A service that keeps the reader open and polls the antenna should call
+`field_off()` after each poll: otherwise the RF field stays on for as long as
+the reader is open. The port is opened exclusively, so a second driver cannot
+take the board from under the first.
 
 ## Safety
 

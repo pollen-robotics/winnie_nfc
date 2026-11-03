@@ -107,7 +107,8 @@ class NTagReader:
             print(r.read_ndef())
     """
 
-    def __init__(self, port="/dev/ttyACM0"):
+    def __init__(self, port=None):
+        """`port` None: the board is found by its USB product string."""
         self._transport = Transport(port=port)
         self._chip = None
 
@@ -138,6 +139,14 @@ class NTagReader:
 
     def uid(self):
         return type2.select_tag(self._chip)
+
+    def field_off(self):
+        """Switch the RF field off; the next operation switches it back on.
+
+        A service that keeps the reader open calls it after each poll,
+        otherwise the antenna stays powered until the reader is closed.
+        """
+        self._chip.field_off()
 
     def chip_version(self):
         """Version reported by the CLRC663. 0x1A for a CLRC66303."""

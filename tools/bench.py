@@ -36,6 +36,12 @@ are today, fixes included. Only success and duration are known for it: the
 retries hide which step failed. `--pipeline both` alternates the two poll by
 poll, which says how much the fixes rescue on each host.
 
+Comparing transceive margins
+----------------------------
+`--margins 100 20` runs every cell once per value of core.TRANSCEIVE_MARGIN_S,
+in ms, and the report sets each value against the first one: a significant
+drop in detection or read rate shows as a REGRESSION (test-procedure.md, D8).
+
 Why the polls are interleaved
 -----------------------------
 Re-measuring the same condition in blocks moved by 8 to 20 points between runs
@@ -71,8 +77,8 @@ from datetime import datetime
 
 import serial
 
+from winnie_nfc import core, type2
 from winnie_nfc import registers as R
-from winnie_nfc import type2
 from winnie_nfc.core import TagError
 from winnie_nfc.iso14443a import select, wupa
 from winnie_nfc.reader import NTagReader
@@ -304,8 +310,19 @@ def current_read(reader):
     )
 
 
+def margin_label(pipeline, margin_ms):
+    """Cell label of a pipeline run with a given transceive margin."""
+    return pipeline if margin_ms is None else f"{pipeline}@{margin_ms:g}ms"
+
+
+def margin_of(label):
+    """Transceive margin set by a cell label, in seconds, or None."""
+    _, _, ms = label.partition("@")
+    return float(ms.removesuffix("ms")) / 1000 if ms else None
+
+
 def one_poll(chip, reader, pipeline, do_read):
-    if pipeline == "raw":
+    if pipeline.startswith("raw"):
         detect = raw_detect(chip)
         read = raw_read(chip) if do_read and detect["stage"] == "ok" else None
     else:
@@ -322,6 +339,7 @@ def run_polls(chip, cells, rounds, do_read, seed, out=print):
     reader._chip = chip
 
     rng = random.Random(seed)
+    default_margin = core.TRANSCEIVE_MARGIN_S
     polls = []
     transport_errors = 0
     start = time.monotonic()
@@ -329,6 +347,7 @@ def run_polls(chip, cells, rounds, do_read, seed, out=print):
         order = list(cells)
         rng.shuffle(order)
         for pipeline, gap in order:
+            core.TRANSCEIVE_MARGIN_S = margin_of(pipeline) or default_margin
             time.sleep(gap)
             try:
                 detect, read = one_poll(chip, reader, pipeline, do_read)
@@ -526,6 +545,43 @@ def report(result, out=print):
                 )
 
 
+def report_margins(result, out=print):
+    """Each transceive margin against the first one, cell by cell."""
+    config = result["config"]
+    margins = config.get("margins") or []
+    if len(margins) < 2:
+        return
+    ref = margins[0]
+    out(f"\n=== transceive margins, against {ref:g} ms")
+    for pipeline in config["pipelines"]:
+        for gap in config["gaps"]:
+            a = cell_stats(result["polls"], margin_label(pipeline, ref), gap)
+            for margin in margins[1:]:
+                b = cell_stats(result["polls"], margin_label(pipeline, margin), gap)
+                out(f"\n[{pipeline}, {gap * 1000:.0f} ms between polls] {margin:g} ms")
+                for kind in ("detect", "read"):
+                    ka, na = a[f"{kind}_ok"], a[f"{kind}_n"]
+                    kb, nb = b[f"{kind}_ok"], b[f"{kind}_n"]
+                    p = two_proportions_p(ka, na, kb, nb)
+                    if p is None:
+                        continue
+                    diff = 100 * (kb / nb - ka / na)
+                    if p >= 0.05:
+                        verdict = "within noise"
+                    else:
+                        verdict = "REGRESSION" if diff < 0 else "better"
+                    out(
+                        f"  {kind:<7}{100 * ka / na:5.1f} % -> {100 * kb / nb:5.1f} %"
+                        f"  {diff:+5.1f} pts, p = {p:.3g} -> {verdict}"
+                    )
+                    times_a, times_b = a[f"{kind}_ms"], b[f"{kind}_ms"]
+                    if times_a and times_b:
+                        out(
+                            f"  {'':<7}median {statistics.median(times_a):6.1f} ms"
+                            f" -> {statistics.median(times_b):6.1f} ms"
+                        )
+
+
 def compare(results, out=print):
     """Side by side: link, rates, step timings."""
     names = [r["label"] for r in results]
@@ -675,29 +731,37 @@ def compare(results, out=print):
 def cmd_run(args):
     _line_buffered_output()
     pipelines = ["raw", "current"] if args.pipeline == "both" else [args.pipeline]
-    cells = [(p, g) for p in pipelines for g in args.gaps]
+    margins = args.margins or [None]
+    cells = [
+        (margin_label(p, m), g) for p in pipelines for m in margins for g in args.gaps
+    ]
 
     reader = NTagReader(port=args.port)
     try:
         reader.__enter__()
     except (TransportError, OSError) as exc:
-        print(f"the board does not answer on {args.port}: {exc}", file=sys.stderr)
+        print(f"the board does not answer: {exc}", file=sys.stderr)
         return 1
     chip = reader._chip
 
     result = {
         "label": args.label or socket.gethostname(),
         "started": datetime.now().isoformat(timespec="seconds"),
-        "host": host_info(args.port),
+        "host": host_info(reader._transport.port),
         "config": {
             "cells": [{"pipeline": p, "gap": g} for p, g in cells],
+            "pipelines": pipelines,
+            "gaps": args.gaps,
+            "margins": args.margins,
             "rounds": args.rounds,
             "read": not args.no_read,
             "seed": args.seed,
         },
         "throttled_before": throttled(),
     }
-    print(f"{result['label']}: CLRC663 0x{chip.version():02X} on {args.port}")
+    print(
+        f"{result['label']}: CLRC663 0x{chip.version():02X} on {reader._transport.port}"
+    )
 
     try:
         print("serial link...")
@@ -723,6 +787,7 @@ def cmd_run(args):
     with open(args.out, "w") as f:
         json.dump(result, f, indent=1)
     report(result)
+    report_margins(result)
     print(f"\nsaved to {args.out}")
     return 0
 
@@ -736,6 +801,7 @@ def cmd_compare(args):
         results.append(result)
     for result in results:
         report(result)
+        report_margins(result)
     compare(results)
     return 0
 
@@ -749,7 +815,8 @@ def main():
     run = sub.add_parser("run", help="measure on this host")
     run.add_argument("--out", required=True, help="JSON file to write")
     run.add_argument(
-        "--port", default="/dev/ttyACM0", help="serial port (default /dev/ttyACM0)"
+        "--port",
+        help="serial port (default: the board found by its USB product string)",
     )
     run.add_argument(
         "--label", help="name of this host in the comparison (default: the hostname)"
@@ -773,6 +840,14 @@ def main():
         default="raw",
         help="raw: without the stability fixes (default); "
         "current: the driver as it is; both: alternated",
+    )
+    run.add_argument(
+        "--margins",
+        type=float,
+        nargs="+",
+        help="transceive margins to compare, in ms, the first being the "
+        f"reference (default: the driver's, "
+        f"{core.TRANSCEIVE_MARGIN_S * 1000:g} ms, alone)",
     )
     run.add_argument(
         "--no-read", action="store_true", help="detection only, no content read"

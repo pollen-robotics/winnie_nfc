@@ -134,7 +134,7 @@ def run(args):
     try:
         transport.open()
     except (TransportError, OSError) as exc:
-        print(f"board not found on {args.port}: {exc}", file=sys.stderr)
+        print(f"board not found: {exc}", file=sys.stderr)
         print("-> check the connection: ls /dev/ttyACM*", file=sys.stderr)
         return 1
 
@@ -151,7 +151,7 @@ def run(args):
         transport.close()
         return 1
 
-    print(f"CLRC663 version 0x{version:02X} on {args.port}")
+    print(f"CLRC663 version 0x{version:02X} on {transport.port}")
     print(
         f"to write: {description}  ({len(payload)} bytes, capacity checked "
         f"on every tag)\n"
@@ -199,7 +199,8 @@ def main():
         "--lang", default="en", help="language code of the text record (default en)"
     )
     parser.add_argument(
-        "--port", default="/dev/ttyACM0", help="serial port (default /dev/ttyACM0)"
+        "--port",
+        help="serial port (default: the board found by its USB product string)",
     )
     parser.add_argument(
         "--batch",

@@ -123,7 +123,7 @@ def watch(args):
     try:
         transport.open()
     except (TransportError, OSError) as exc:
-        print(f"board not found on {args.port}: {exc}", file=sys.stderr)
+        print(f"board not found: {exc}", file=sys.stderr)
         print("-> check the connection: ls /dev/ttyACM*", file=sys.stderr)
         print("-> and your membership of the dialout group: id -nG", file=sys.stderr)
         return 1
@@ -138,7 +138,7 @@ def watch(args):
         transport.close()
         return 1
 
-    print(f"CLRC663 version 0x{version:02X} on {args.port}")
+    print(f"CLRC663 version 0x{version:02X} on {transport.port}")
     print(f"watching at {args.rate} Hz — Ctrl+C to stop")
     print("waiting for a tag on the antenna...\n")
 
@@ -175,7 +175,8 @@ def main():
         description="Watch the antenna and read every tag presented to it."
     )
     parser.add_argument(
-        "--port", default="/dev/ttyACM0", help="serial port (default /dev/ttyACM0)"
+        "--port",
+        help="serial port (default: the board found by its USB product string)",
     )
     parser.add_argument(
         "--rate", type=float, default=5.0, help="polls per second (default 5)"

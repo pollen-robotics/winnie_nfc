@@ -16,7 +16,7 @@ Put an NTAG215 on the antenna and run:
 .venv/bin/winnie-nfc doctor && .venv/bin/winnie-nfc read
 ```
 
-All 8 steps `[ok]`, then the tag's content. If that is what you get, the board,
+All 9 steps `[ok]`, then the tag's content. If that is what you get, the board,
 the serial link, the radio and the tag all work — you can stop there for a
 routine check.
 
@@ -51,11 +51,16 @@ good.
 ### B1. Does the system see the board?
 
 ```bash
-ls -l /dev/serial/by-id/ && lsusb | grep 1a86
+ls -l /dev/serial/by-id/ && cat /sys/class/tty/ttyACM0/device/../product
 ```
 
-**Expected:** a link to `ttyACM0` and the line `1a86:55d3 QinHeng Electronics
-USB Single Serial` — the board's CH343 bridge.
+**Expected:** a link to `ttyACM0` whose name contains `Winnie_NFC`, and the
+product string `Winnie NFC <version>` — the identity flashed on the board's
+CH343 bridge (see [USB identity](hardware.md#usb-identity)).
+
+**If the product string is `USB Single Serial`:** the board was never flashed.
+Flash it before going further: neither the driver nor `winnie-nfc doctor` opens
+a port without the `Winnie NFC` product string.
 
 **If nothing shows:** check the USB cable, then that you are in the `dialout`
 group (`id -nG`). Without that group the port exists but stays inaccessible.
@@ -66,9 +71,10 @@ group (`id -nG`). Without that group the port exists but stays inaccessible.
 .venv/bin/winnie-nfc doctor
 ```
 
-With no tag, the **first four** steps must pass, then it stops at REQA:
+With no tag, the **first five** steps must pass, then it stops at REQA:
 
 ```
+  [ok]  USB identity: /dev/ttyACM0, Winnie NFC A3
   [ok]  serial port can be opened
   [ok]  soft reset and version register: version 0x1A
   [ok]  FIFO in 512-byte mode: 512 bytes
@@ -80,11 +86,13 @@ With no tag, the **first four** steps must pass, then it stops at REQA:
 
 Exit code 1. **That is the correct behaviour with no tag** — it is not a fault.
 
-**If step 2 fails:** the chip does not answer. Unplug and replug the board. If
+**If step 1 fails:** the port is not a flashed Winnie board, see B1.
+
+**If step 3 fails:** the chip does not answer. Unplug and replug the board. If
 it persists, it is hardware — see
 [Known pitfalls](hardware.md#known-pitfalls).
 
-**If step 4 fails:** the ISO 14443A protocol could not be loaded. Look at the
+**If step 5 fails:** the ISO 14443A protocol could not be loaded. Look at the
 transmit stage's supply and at the antenna.
 
 ---
@@ -97,7 +105,7 @@ transmit stage's supply and at the antenna.
 .venv/bin/winnie-nfc doctor
 ```
 
-**Expected:** all 8 steps `[ok]`, exit code 0, with these values:
+**Expected:** all 9 steps `[ok]`, exit code 0, with these values:
 
 | Step | Expected value |
 |---|---|
@@ -262,12 +270,12 @@ print('chip desynchronised')
 " && .venv/bin/winnie-nfc doctor
 ```
 
-**Expected:** the **first four** steps pass — port, soft reset and version
+**Expected:** the **first five** steps pass — port, soft reset and version
 `0x1A`, FIFO 512, RF field. That is what this test validates: the opening
 `soft_reset` recovers from the desynchronisation, and cutting the power is never
 necessary.
 
-Steps 5 to 8 depend on the tag, not on the recovery. If they fail while a tag
+Steps 6 to 9 depend on the tag, not on the recovery. If they fail while a tag
 is on the antenna, the desynchronisation is not the cause: go to D6.
 
 ### D4. Two tags in the field
@@ -313,7 +321,7 @@ as valid, that ordering has regressed.
 
 ### D6. Telling "the tag does not couple" from "the board is broken"
 
-When the doctor passes its first four steps but fails at REQA while a tag is on
+When the doctor passes its first five steps but fails at REQA while a tag is on
 the antenna, the question is: the board or the tag?
 
 ```bash
@@ -385,6 +393,33 @@ them matters more than the level.
 The one poll in thirty still lost at 1 s is within the noise of 30 samples
 (95 % interval 83-99 %). No tag ever needed a fourth attempt: raise
 `SELECT_ATTEMPTS` only on evidence.
+
+### D8. The transceive margin must not cost reads
+
+`core.TRANSCEIVE_MARGIN_S` is how long the host keeps waiting for a command
+after the chip's timeout. Every exchange on an empty antenna pays it in full;
+too short a margin would drop answers that did come. To compare two values, on
+each host the driver runs on, with a tag left still on the antenna:
+
+```bash
+.venv/bin/python tools/bench.py run --pipeline current --margins 100 20 \
+    --rounds 200 --out margins-$(hostname).json
+```
+
+The last section of the report sets each margin against the first one, for
+each interval between polls: detection and read rates, the difference with its
+p-value, and the median durations.
+
+**Expected:** `within noise` (or `better`) everywhere. A `REGRESSION` means the
+new value loses answers on this host. The values are interleaved within one run
+for the reason given in D7.
+
+Measured for the current 20 ms against 100 ms, 200 polls per cell, Winnie A3:
+
+| host | detection | read | empty poll (`select_tag`) |
+|---|---|---|---|
+| PC | 100 % for both | 100 % for both | 140 → 61 ms |
+| CM4 | 100 % for both | 100 % for both | 140 → 60 ms |
 
 ---
 

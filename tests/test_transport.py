@@ -1,6 +1,10 @@
-import pytest
+from types import SimpleNamespace
 
-from winnie_nfc.transport import DesyncError, Transport
+import pytest
+import serial
+
+from winnie_nfc import usb
+from winnie_nfc.transport import DesyncError, Transport, TransportError
 
 
 class FakeSerial:
@@ -178,3 +182,57 @@ def test_a_batch_of_more_than_512_operations_is_split():
     assert len(res) == 520
     for i, val in enumerate(res):
         assert val == (i % 256)
+
+
+# --- opening: the board is found by its USB product string, and locked -------
+
+
+@pytest.fixture
+def opened(monkeypatch):
+    """serial.Serial replaced by a stand-in; the instances it creates."""
+    instances = []
+
+    class OpenedSerial:
+        def __init__(self):
+            instances.append(self)
+
+        def open(self):
+            pass
+
+    monkeypatch.setattr(serial, "Serial", OpenedSerial)
+    return instances
+
+
+def _plugged(monkeypatch, *products):
+    ports = [
+        SimpleNamespace(device=f"/dev/ttyACM{i}", product=p)
+        for i, p in enumerate(products)
+    ]
+    monkeypatch.setattr(usb.list_ports, "comports", lambda: ports)
+
+
+def test_the_board_is_found_by_its_product_string_and_locked(monkeypatch, opened):
+    # Another CH343 device enumerated first, as ttyACM0.
+    _plugged(monkeypatch, "USB Single Serial", "Winnie NFC A3")
+    Transport().open()
+    assert opened[0].port == "/dev/ttyACM1"
+    assert opened[0].exclusive is True
+
+
+def test_no_board_found_opens_nothing(monkeypatch, opened):
+    _plugged(monkeypatch, "USB Single Serial")
+    with pytest.raises(TransportError, match="no Winnie board"):
+        Transport().open()
+    assert opened == []
+
+
+def test_two_boards_found_require_an_explicit_port(monkeypatch, opened):
+    _plugged(monkeypatch, "Winnie NFC A3", "Winnie NFC A3")
+    with pytest.raises(TransportError, match="2 Winnie boards"):
+        Transport().open()
+
+
+def test_an_explicit_port_is_used_as_given(monkeypatch, opened):
+    _plugged(monkeypatch)
+    Transport(port="/dev/ttyUSB3").open()
+    assert opened[0].port == "/dev/ttyUSB3"

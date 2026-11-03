@@ -118,7 +118,10 @@ def build_text(text, lang="en"):
     this library: it ends up in the record, and a reader may use it to pick a
     translation.
     """
-    lang_bytes = lang.encode("ascii")
+    try:
+        lang_bytes = lang.encode("ascii")
+    except UnicodeEncodeError:
+        raise NdefError(f"language code must be ASCII: {lang}") from None
     if len(lang_bytes) > 0x3F:
         raise NdefError(f"language code too long: {lang}")
     # Status byte: bit 7 clear = UTF-8, bits 5..0 = length of the language code.
