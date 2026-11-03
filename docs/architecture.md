@@ -6,6 +6,7 @@ Each module depends only on the ones above it in this table.
 
 | Module | Role |
 |---|---|
+| `usb.py` | USB identity: finds the board by its product string, without opening a port |
 | `transport.py` | Serial port, pipelining, echo checking (`read_reg`, `write_reg`, `execute`) |
 | `registers.py` | Datasheet constants only, no logic |
 | `core.py` | `CLRC663`: soft reset, 512-byte FIFO, IRQs, timers, `transceive`, RF field |
@@ -15,10 +16,11 @@ Each module depends only on the ones above it in this table.
 | `reader.py` | `NTagReader`: session handling, write ordering, erase |
 | `cli.py` | The `winnie-nfc` command: `doctor`, `read`, `write`, `erase`, `dump` |
 
-`transport.py` is the **only** module that knows the link goes through USB.
-Upper layers ask for "504 bytes" and the transport decides how to batch the
-requests. If pipelining turns out to be fragile on another board, it can be
-made sequential in this one file, at the cost of a 4.6× slowdown (see
+`usb.py` and `transport.py` are the only modules that know the link goes
+through USB: the first finds the board, the second talks to it. Upper layers
+ask for "504 bytes" and the transport decides how to batch the requests. If
+pipelining turns out to be fragile on another board, it can be made sequential
+in `transport.py` alone, at the cost of a 4.6× slowdown (see
 [hardware.md](hardware.md#serial-link-performance)).
 
 ## Deliberate differences from the reference library

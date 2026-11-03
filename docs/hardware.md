@@ -13,7 +13,7 @@ driver. Users of the library never see the chip, but every design decision in
 
 | Item | Measured value |
 |---|---|
-| USB-UART bridge | WCH CH343, `1a86:55d3`, CDC class → `/dev/ttyACM0` |
+| USB-UART bridge | WCH CH343, `1a86:55d3`, CDC class → `/dev/ttyACM*` |
 | Version register (`0x7F`) | `0x1A` — CLRC663 (CLRC66303) |
 | `SerialSpeed` (`0x3B`) at reset | `0x7A` = **115200 baud** |
 | `FIFOControl` (`0x02`) at reset | `0xA0` → bit 7 set → FIFO of **255 bytes** |
@@ -34,8 +34,8 @@ opening a port.
 To check a board without opening its port:
 
 ```bash
-cat /sys/class/tty/ttyACM0/device/../product   # Winnie NFC A3
-ls /dev/serial/by-id/                          # ..._Winnie_NFC_A3_...
+ls -l /dev/serial/by-id/
+# usb-Pollen_Robotics_Winnie_NFC_<version>_<serial>-if00 -> ../../ttyACM<n>
 ```
 
 ## Register protocol
