@@ -51,16 +51,25 @@ good.
 ### B1. Does the system see the board?
 
 ```bash
-ls -l /dev/serial/by-id/ && cat /sys/class/tty/ttyACM0/device/../product
+ls -l /dev/serial/by-id/
 ```
 
-**Expected:** a link to `ttyACM0` whose name contains `Winnie_NFC`, and the
-product string `Winnie NFC <version>` — the identity flashed on the board's
-CH343 bridge (see [USB identity](hardware.md#usb-identity)).
+**Expected:** a link whose name contains `Winnie_NFC_<version>`, pointing to
+the board's port — the identity flashed on its CH343 bridge (see
+[USB identity](hardware.md#usb-identity)):
 
-**If the product string is `USB Single Serial`:** the board was never flashed.
-Flash it before going further: neither the driver nor `winnie-nfc doctor` opens
-a port without the `Winnie NFC` product string.
+```
+usb-Pollen_Robotics_Winnie_NFC_<version>_<serial>-if00 -> ../../ttyACM<n>
+```
+
+The port is not necessarily `ttyACM0`: on a Reachy Mini Lite host, the motor
+bus may come first.
+
+**If the board's link contains `USB_Single_Serial` instead:** the board was
+never flashed. Flash it before going further: neither the driver nor
+`winnie-nfc doctor` opens a port without the `Winnie NFC` product string. Other
+devices on the same bridge, such as a Lite's motor bus, show the same name:
+unplug the board to see which link is its.
 
 **If nothing shows:** check the USB cable, then that you are in the `dialout`
 group (`id -nG`). Without that group the port exists but stays inaccessible.
@@ -74,7 +83,7 @@ group (`id -nG`). Without that group the port exists but stays inaccessible.
 With no tag, the **first five** steps must pass, then it stops at REQA:
 
 ```
-  [ok]  USB identity: /dev/ttyACM0, Winnie NFC A3
+  [ok]  USB identity: /dev/ttyACM1, Winnie NFC A3
   [ok]  serial port can be opened
   [ok]  soft reset and version register: version 0x1A
   [ok]  FIFO in 512-byte mode: 512 bytes

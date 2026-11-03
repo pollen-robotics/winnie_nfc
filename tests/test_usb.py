@@ -89,3 +89,18 @@ def test_doctor_opens_an_unflashed_board_when_asked(plugged, doctor):
 def test_doctor_reports_a_missing_device(plugged, doctor):
     plugged()
     assert doctor("--port", "/dev/ttyACM0", "doctor") == 1
+
+
+def test_doctor_says_when_another_program_holds_the_board(plugged, monkeypatch, capsys):
+    import errno
+
+    import serial
+
+    def locked(self):
+        raise serial.SerialException(errno.EAGAIN, "Could not exclusively lock port")
+
+    plugged(("/dev/ttyACM0", "Winnie NFC A3"))
+    monkeypatch.setattr(cli.Transport, "open", locked)
+    monkeypatch.setattr(sys, "argv", ["winnie-nfc", "doctor"])
+    assert cli.main() == 1
+    assert "another program holds the board" in capsys.readouterr().out

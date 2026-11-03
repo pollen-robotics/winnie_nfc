@@ -1,6 +1,7 @@
 """CLI of the Type 2 tag driver."""
 
 import argparse
+import errno
 import sys
 
 from . import type2, usb
@@ -84,10 +85,15 @@ def cmd_doctor(args):
         return 1
 
     transport = Transport(port=args.port)
-    ok, _, _ = _step("serial port can be opened", lambda: transport.open() or "")
+    ok, _, exc = _step("serial port can be opened", lambda: transport.open() or "")
     if not ok:
-        print("\n-> check that the board is plugged in: ls /dev/ttyACM*")
-        print("   and that you belong to the dialout group: id -nG")
+        if getattr(exc, "errno", None) in (errno.EAGAIN, errno.EWOULDBLOCK):
+            # The port is opened exclusively: someone else has it.
+            print("\n-> another program holds the board: on a robot, most likely")
+            print("   the daemon's NFC service. Stop it, then run this again.")
+        else:
+            print("\n-> check that the board is plugged in: ls /dev/serial/by-id/")
+            print("   and that you belong to the dialout group: id -nG")
         return 1
 
     chip = CLRC663(transport)
