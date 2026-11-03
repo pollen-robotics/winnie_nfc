@@ -1,14 +1,14 @@
 [project]
 name = "winnie_nfc"
 version = "1.0.0"
-description = "Host driver for the Pollen Robotics Winnie NFC board (ASE01209): NTAG21x / Ultralight EV1 tags through a CLRC663 over UART-USB"
+description = "Python driver and CLI for the Winnie NFC board: read and write NFC tags over USB"
 readme = "README.md"
 requires-python = ">=3.9"
 license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]
 dependencies = ["pyserial>=3.5"]
 authors = [{ name = "Pollen Robotics" }]
-keywords = ["nfc", "ntag", "ndef", "clrc663", "pollen-robotics"]
+keywords = ["nfc", "rfid", "ntag", "mifare-ultralight", "ndef", "clrc663", "pollen-robotics"]
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: POSIX :: Linux",
