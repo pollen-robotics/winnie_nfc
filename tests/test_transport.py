@@ -236,3 +236,8 @@ def test_an_explicit_port_is_used_as_given(monkeypatch, opened):
     _plugged(monkeypatch)
     Transport(port="/dev/ttyUSB3").open()
     assert opened[0].port == "/dev/ttyUSB3"
+
+
+def test_a_port_used_before_open_raises_a_transport_error():
+    with pytest.raises(TransportError, match="not open"):
+        Transport(port="/dev/ttyACM0").read_reg(0x7F)

@@ -23,6 +23,7 @@ Stop with Ctrl+C: the field is switched off and the port closed cleanly.
 """
 
 import argparse
+import io
 import sys
 import time
 
@@ -39,10 +40,8 @@ MAX_SHORT_READS = 4
 
 def _line_buffered_output():
     """Line-buffered output, even when redirected to a file or a pipe."""
-    try:
+    if isinstance(sys.stdout, io.TextIOWrapper):
         sys.stdout.reconfigure(line_buffering=True)
-    except AttributeError:  # Python < 3.7
-        pass
 
 
 def timestamp():

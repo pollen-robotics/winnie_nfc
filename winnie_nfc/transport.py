@@ -92,13 +92,20 @@ class Transport:
     def __exit__(self, *exc):
         self.close()
 
+    @property
+    def _serial(self):
+        """The open port. Raises TransportError rather than an AttributeError."""
+        if self._ser is None:
+            raise TransportError("serial port not open: call open() or use `with`")
+        return self._ser
+
     def raw_write(self, data):
         """Send without checking anything. Reserved for the reset sequence."""
-        self._ser.write(data)
-        self._ser.flush()
+        self._serial.write(data)
+        self._serial.flush()
 
     def drain(self):
-        self._ser.reset_input_buffer()
+        self._serial.reset_input_buffer()
 
     def execute(self, ops):
         """Send every operation, then read exactly one response for each."""
@@ -119,15 +126,16 @@ class Transport:
                 out.append(op[1] & 0x7F)
                 out.append(op[2] & 0xFF)
 
-        self._ser.reset_input_buffer()
-        self._ser.write(bytes(out))
-        self._ser.flush()
+        ser = self._serial
+        ser.reset_input_buffer()
+        ser.write(bytes(out))
+        ser.flush()
 
         expected = len(ops)
         received = bytearray()
         deadline = time.monotonic() + self.timeout + expected * 0.001
         while len(received) < expected and time.monotonic() < deadline:
-            chunk = self._ser.read(expected - len(received))
+            chunk = ser.read(expected - len(received))
             if chunk:
                 received += chunk
 

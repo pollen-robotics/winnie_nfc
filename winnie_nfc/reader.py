@@ -38,7 +38,7 @@ from collections import namedtuple
 
 from . import ndef, type2
 from .core import CLRC663, TagError
-from .transport import Transport
+from .transport import Transport, TransportError
 
 # What a full tag read returns. The raw bytes are part of it: a tag can carry
 # content without being NDEF formatted — an ASCII code written straight into
@@ -136,9 +136,17 @@ class NTagReader:
             # symmetry with __enter__.
             pass
         self._transport.close()
+        self._chip = None
+
+    @property
+    def _open_chip(self):
+        """The chip, once the reader is open. Raises TransportError otherwise."""
+        if self._chip is None:
+            raise TransportError("reader not open: use it in a `with` block")
+        return self._chip
 
     def uid(self):
-        return type2.select_tag(self._chip)
+        return type2.select_tag(self._open_chip)
 
     def field_off(self):
         """Switch the RF field off; the next operation switches it back on.
@@ -146,16 +154,16 @@ class NTagReader:
         A service that keeps the reader open calls it after each poll,
         otherwise the antenna stays powered until the reader is closed.
         """
-        self._chip.field_off()
+        self._open_chip.field_off()
 
     def chip_version(self):
         """Version reported by the CLRC663. 0x1A for a CLRC66303."""
-        return self._chip.version()
+        return self._open_chip.version()
 
     def info(self):
         """Model and memory bounds of the tag on the antenna."""
-        type2.select_tag(self._chip)
-        return type2.identify(self._chip)
+        type2.select_tag(self._open_chip)
+        return type2.identify(self._open_chip)
 
     def read_ndef(self):
         """NDEF records of the tag.
@@ -164,9 +172,9 @@ class NTagReader:
         A tag with no NDEF message at all, such as a factory one, raises
         NdefAbsentError.
         """
-        type2.select_tag(self._chip)
-        info = type2.identify(self._chip)
-        return ndef.parse(type2.read_user_memory(self._chip, info))
+        type2.select_tag(self._open_chip)
+        info = type2.identify(self._open_chip)
+        return ndef.parse(type2.read_user_memory(self._open_chip, info))
 
     def read_tag(self):
         """Everything one poll can learn about the tag, in a single selection.
@@ -193,7 +201,7 @@ class NTagReader:
                       NDEF; a sentence when there is a message but it is
                       malformed.
         """
-        uid = type2.select_tag(self._chip)
+        uid = type2.select_tag(self._open_chip)
 
         # A failed content read is retried from a fresh selection: an exchange
         # lost in the middle of a FAST_READ leaves the tag out of ACTIVE, so
@@ -205,7 +213,7 @@ class NTagReader:
             if read.data or not remaining:
                 return read
             try:
-                uid = type2.select_tag(self._chip)
+                uid = type2.select_tag(self._open_chip)
             except TagError:
                 # Gone, or no longer answering: what was learned stands, and
                 # the next poll will tell whether the tag is still there.
@@ -214,12 +222,12 @@ class NTagReader:
     def _read_content(self, uid):
         """Identify the selected tag and read its memory, for read_tag."""
         try:
-            info = type2.identify(self._chip)
+            info = type2.identify(self._open_chip)
         except TagError as exc:
             return TagRead(uid, None, None, b"", f"unusable tag: {exc}")
 
         try:
-            data = type2.read_user_memory(self._chip, info)
+            data = type2.read_user_memory(self._open_chip, info)
         except TagError as exc:
             return TagRead(uid, info, None, b"", f"cannot read: {exc}")
 
@@ -234,9 +242,9 @@ class NTagReader:
 
     def dump(self):
         """The tag's whole user memory, within its own bounds."""
-        type2.select_tag(self._chip)
-        info = type2.identify(self._chip)
-        return type2.read_user_memory(self._chip, info)
+        type2.select_tag(self._open_chip)
+        info = type2.identify(self._open_chip)
+        return type2.read_user_memory(self._open_chip, info)
 
     def _write(self, payload):
         """Check the capacity of the tag on the antenna, then write the TLV."""
@@ -251,12 +259,12 @@ class NTagReader:
                 f"on the largest supported tag"
             )
 
-        type2.select_tag(self._chip)
+        type2.select_tag(self._open_chip)
         # Essential guard: capacity depends on the model. On a tag smaller than
         # we believe, the write would overrun into the lock pages and damage
         # the tag beyond repair.
-        info = type2.check_capacity(self._chip, len(payload))
-        write_message(self._chip, payload, info)
+        info = type2.check_capacity(self._open_chip, len(payload))
+        write_message(self._open_chip, payload, info)
 
     def erase(self, full=False):
         """Make the tag blank again. Returns the number of pages written.
@@ -283,8 +291,8 @@ class NTagReader:
         A locked or unidentified tag is refused, as for any write: see
         check_capacity.
         """
-        type2.select_tag(self._chip)
-        info = type2.check_capacity(self._chip, len(EMPTY_TLV))
+        type2.select_tag(self._open_chip)
+        info = type2.check_capacity(self._open_chip, len(EMPTY_TLV))
         if full and info.model is None:
             raise type2.UnknownModelError(
                 "full erase refused on an unidentified tag: without "
@@ -295,17 +303,17 @@ class NTagReader:
         # The empty TLV first, in both cases: it is what makes the tag blank,
         # and doing it first guarantees that an interruption leaves a blank tag
         # rather than a half-erased message.
-        type2.write_page(self._chip, type2.PAGE_USER_START, EMPTY_TLV)
+        type2.write_page(self._open_chip, type2.PAGE_USER_START, EMPTY_TLV)
         pages = 1
         if not full:
             return pages
 
         for page in range(type2.PAGE_USER_START + 1, info.last_page + 1):
-            type2.write_page(self._chip, page, bytes(4))
+            type2.write_page(self._open_chip, page, bytes(4))
             pages += 1
         # Page 4 last: until now the tag read as blank, from here on it reads
         # as unformatted, like a brand-new tag.
-        type2.write_page(self._chip, type2.PAGE_USER_START, bytes(4))
+        type2.write_page(self._open_chip, type2.PAGE_USER_START, bytes(4))
         return pages + 1
 
     def write_text(self, text, lang="en"):
