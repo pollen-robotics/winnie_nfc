@@ -86,6 +86,10 @@ identifier, its NDEF formatting, its locks, configuration or password. A tag
 written or erased by this driver can always be rewritten, and stays readable by
 a phone.
 
+A tag partly locked by another tool is the exception: the driver detects a tag
+declared read-only, but not lock bits or a password set on some pages only. A
+write that reaches such a page fails and leaves the tag blank.
+
 It also refuses to write a message longer than the tag can hold, or to a tag
 whose size it cannot determine, rather than risk overflowing into those parts.
 Tests enforce these rules; the memory layout is in
