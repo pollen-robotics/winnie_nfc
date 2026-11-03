@@ -21,8 +21,8 @@ Run them from the root of the repository.
 ```
 
 `read.py` first checks that the board answers, then only prints changes: a tag
-arriving, its content, its removal. A detection costs ~35 ms and a full NDEF
-read ~130, which is why the read only happens when a tag arrives and not on
+arriving, its content, its removal. A detection costs ~70 ms and a full NDEF
+read ~180, which is why the read only happens when a tag arrives and not on
 every poll.
 
 `write.py` never reports success without having read the tag back and decoded

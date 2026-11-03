@@ -173,7 +173,7 @@ class NTagReader:
 
         A service watching the antenna needs all of it on every tag arrival:
         getting it through uid() then read_ndef() would cost two selections, so
-        ~70 ms of detection instead of ~35, out of a 200 ms budget at 5 Hz.
+        ~140 ms of detection instead of ~70, out of a 200 ms budget at 5 Hz.
 
         Only raises when the field is empty (NoTagError) or when the serial
         link breaks. Any tag that answered the SELECT returns its UID, even

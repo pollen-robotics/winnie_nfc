@@ -3,8 +3,8 @@
 
 First checks that the board is connected and that the CLRC663 answers, then
 polls for the presence of a tag at the requested rate. The full NDEF read only
-happens when a tag arrives, not on every poll: a detection costs ~35 ms where a
-full read costs ~130.
+happens when a tag arrives, not on every poll: a detection costs ~70 ms where a
+full read costs ~180.
 
 Usage:
     .venv/bin/python tools/read.py
@@ -186,7 +186,7 @@ def main():
     if args.rate <= 0 or args.rate > 20:
         print(
             "the rate must sit between 0 and 20 Hz: a detection costs "
-            "~35 ms, beyond that we poll faster than the hardware answers",
+            "~70 ms, beyond ~14 Hz the polls run back to back anyway",
             file=sys.stderr,
         )
         return 1

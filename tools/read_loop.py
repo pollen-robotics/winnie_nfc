@@ -6,7 +6,7 @@ being removed. Here, one line is produced on **every** poll, whether anything
 changed or not.
 
 The time budget is the constraint. At 5 Hz we have 200 ms, and a FAST_READ of
-the 504 user memory bytes costs ~130 on its own. So we read incrementally: 16
+the 504 user memory bytes costs ~110 ms on its own. So we read incrementally: 16
 bytes first, which is enough to know the message length from its TLV header,
 then only what is missing. A tag carrying a short URL is therefore read
 entirely in one or two exchanges.
@@ -234,7 +234,7 @@ def main():
     if args.rate <= 0 or args.rate > 20:
         print(
             "the rate must sit between 0 and 20 Hz: a detection costs "
-            "~35 ms on its own",
+            "~70 ms on its own",
             file=sys.stderr,
         )
         return 1

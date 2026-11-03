@@ -163,7 +163,7 @@ uri   : https://pollen-robotics.com
 
 **Expected:** the first line shows the `03` TLV followed by the record, and the
 right-hand column lets you read `pollen-robotics.com` in the clear. The full
-dump is 504 bytes and takes about 130 ms.
+dump is 504 bytes and takes about 180 ms, selection included.
 
 ### C6. The validation that really counts — a phone
 
