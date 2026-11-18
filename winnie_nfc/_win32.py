@@ -207,6 +207,10 @@ def usb_products():
             if not setupapi.SetupDiEnumDeviceInfo(devices, index, ctypes.byref(info)):
                 break
             index += 1
+            # A Bluetooth port climbs to its USB radio, and can share the
+            # board's COM name.
+            if _device_id(cfgmgr32, info.DevInst).upper().startswith("BTHENUM\\"):
+                continue
             port = _port_name(setupapi, advapi32, devices, info)
             usb_device = _usb_device(cfgmgr32, info.DevInst)
             if port is None or usb_device is None:

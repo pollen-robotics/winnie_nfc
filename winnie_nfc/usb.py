@@ -41,7 +41,7 @@ def _comports():
         for p in ports:
             # USB ports only: Windows can list a Bluetooth port under the same
             # name as a USB one.
-            if p.product is None and getattr(p, "vid", None) is not None:
+            if p.product is None and p.vid is not None:
                 p.product = products.get(p.device)
     return ports
 
