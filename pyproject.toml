@@ -1,6 +1,6 @@
 [project]
 name = "winnie_nfc"
-version = "1.0.0"
+version = "1.1.0"
 description = "Python driver and CLI for the Winnie NFC board: read and write NFC tags over USB"
 readme = "README.md"
 requires-python = ">=3.9"
