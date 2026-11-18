@@ -9,12 +9,13 @@ command-line tool.
 
 ## Requirements
 
-- Linux, Python ≥ 3.9
+- Linux or Windows, Python ≥ 3.9
 - The Winnie NFC board (`ASE01209`), revisions A1 to A3, plugged in over USB,
   with its USB product string flashed to `Winnie NFC <version>`: that is how
   the driver finds it (see
   [USB identity](https://github.com/pollen-robotics/winnie_nfc/blob/main/docs/hardware.md#usb-identity))
-- Read/write access to the serial port: add your user to the `dialout` group
+- On Linux, read/write access to the serial port: add your user to the
+  `dialout` group
 
 ## Installation
 
@@ -53,7 +54,8 @@ winnie-nfc erase                                  # empty NDEF message (--full: 
 winnie-nfc dump                                   # hex dump of the user memory
 ```
 
-All commands find the board by its USB product string, or take `--port`.
+All commands find the board by its USB product string, or take `--port`,
+given before the command: `winnie-nfc --port COM3 read`.
 
 ## Python API
 

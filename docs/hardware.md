@@ -38,6 +38,15 @@ ls -l /dev/serial/by-id/
 # usb-Pollen_Robotics_Winnie_NFC_<version>_<serial>-if00 -> ../../ttyACM<n>
 ```
 
+On Windows, pyserial does not report the product string, so the driver reads
+it from the device property `DEVPKEY_Device_BusReportedDeviceDesc`
+(`winnie_nfc/_win32.py`). To check a board from PowerShell:
+
+```powershell
+Get-PnpDevice -PresentOnly -Class Ports | ForEach-Object { "$($_.FriendlyName): $((Get-PnpDeviceProperty -InstanceId $_.InstanceId -KeyName DEVPKEY_Device_BusReportedDeviceDesc).Data)" }
+# USB-Enhanced-SERIAL CH343 (COM3): Winnie NFC A3
+```
+
 ## Register protocol
 
 - **Write:** send `[reg & 0x7F, value]`. The chip echoes the address byte,

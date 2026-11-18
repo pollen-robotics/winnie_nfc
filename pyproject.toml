@@ -12,6 +12,7 @@ keywords = ["nfc", "rfid", "ntag", "mifare-ultralight", "ndef", "clrc663", "poll
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: POSIX :: Linux",
+    "Operating System :: Microsoft :: Windows",
     "Topic :: System :: Hardware :: Hardware Drivers",
 ]
 
