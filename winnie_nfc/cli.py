@@ -13,6 +13,13 @@ from .transport import Transport, TransportError, find_port
 OK = "  [ok]  "
 KO = "  [KO]  "
 
+if sys.platform == "win32":
+    PLUGGED_HINT = "check that the board is plugged in: Device Manager, Ports"
+    ACCESS_HINT = "and that no other program has it open"
+else:
+    PLUGGED_HINT = "check that the board is plugged in: ls /dev/serial/by-id/"
+    ACCESS_HINT = "and that you belong to the dialout group: id -nG"
+
 
 def _step(label, func):
     """Run one diagnostic step. Returns (succeeded, value, exception).
@@ -78,7 +85,7 @@ def cmd_doctor(args):
     ok, _, _ = _step("USB identity", step_usb)
     if not ok:
         print(
-            "\n-> check that the board is plugged in: ls /dev/serial/by-id/\n"
+            f"\n-> {PLUGGED_HINT}\n"
             "   An unflashed board reports 'USB Single Serial': flash it, see\n"
             "   docs/hardware.md. --unflashed to go on anyway."
         )
@@ -92,8 +99,8 @@ def cmd_doctor(args):
             print("\n-> another program holds the board: on a robot, most likely")
             print("   the daemon's NFC service. Stop it, then run this again.")
         else:
-            print("\n-> check that the board is plugged in: ls /dev/serial/by-id/")
-            print("   and that you belong to the dialout group: id -nG")
+            print(f"\n-> {PLUGGED_HINT}")
+            print(f"   {ACCESS_HINT}")
         return 1
 
     chip = CLRC663(transport)
